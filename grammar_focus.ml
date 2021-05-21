@@ -1,8 +1,14 @@
 open Focus
 
-type grammar_ctx = rule list_ctx
+type grammar_ctx = 
+  | Root
+  | Var1 of syntagm * grammar_ctx * grammarTree
+  | Var2 of syntagm * grammarTree * grammar_ctx 
+  | Prod1 of grammar_ctx * grammarTree
+  | Prod2 of grammarTree * grammar_ctx
 
-type focus = rule list_focus
+
+type focus =
 
 
 let is_empty_focus = function

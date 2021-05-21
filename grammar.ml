@@ -2,32 +2,28 @@ type syntagm = string (** non terminaux *)
 type token = string (** terminaux *)
 
 
-type production = 
-    | Epsilon
+type symbol = 
     | Item of token
     | Var of syntagm 
-type rule = Rule of syntagm * production * production 
-type grammar = Grammar of syntagm * rule list 
+type production = Production of symbol list
+type rules = Rules of syntagm * production list
+type grammar = Grammar of syntagm * rules list 
 
 
 let (g1:grammar) = Grammar("Z" , [
-    Rule("Z", Item("{"), Var("W"));
-    Rule("W", Var("X"), Var(U)); 
-    Rule("X", Item("ID:"),Var("Y"));
-    Rule("X", Item("ID:"), Var("Z"));
-    Rule("Y", Item("NUM"), Epsilon);
-    Rule("Y", Item("STR"), Epsilon);
-    Rule("U", Item(", "), Var("X"));
-    Rule("U", Item("}"), Epsilon);
-]) 
+ Rules("Z", [Production([Item("{"); Var("X"); Var("U")])]);
+ Rules("X", [Production([Item("ID:");Var("Y")]); Production([Item("ID:"); Var("Z")])]);
+ Rules("Y", [Production([Item("NUM")]); Production([Item("STR")])]);
+ Rules("U", [Production([Item(", "); Var("X")]); Production([Item("}")])]);
+])
 
 let (g2:grammar) = Grammar("X", [
-    Rule("X", Item("("), Var("W"));
-    Rule("W", Var("X"), Item(")"));
-    Rule("X", Item("["), Var("Y"));
-    Rule("Y", Var("X"), Item("]"));
-    Rule("X", Var("X"), Var("X"));
-    Rule("X", Epsilon, Epsilon)
+    Rules("X", [
+        Production([Item("("); Var("X"); Item(")")]); 
+        Production([Item("["); Var("X"); Item("]")]);
+        Production([Var("X"); Var("X")]);
+        Production([])
+    ])
 ]) (* par contre ambigüe *)
 
 (**
