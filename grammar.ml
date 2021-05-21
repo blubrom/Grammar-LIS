@@ -1,32 +1,34 @@
-(*
-type production = 
-    | Epsilon
-    | String of string 
-    | Vars of string list 
-type rule = (string * production)
-type grammar = string * rule list 
-
-(*
-ou alors
-type rule = string * ((production list) list) ?
-type grammar = string * (rule list) si on souhaite préciser l'axiome 
-*)
-
-
-let (g1:grammar) = "Z" , [("Z", Vars(["A";"X"; "U"]));
-          ("X", Vars(["B";"Y"]));("X", Vars(["B"; "Z"]));
-          ("Y", String("NUM"));("Y", String("STR"));
-          ("U", Vars(["C"; "X"; "U"]));("U", String("}"));
-          ("A", String("{")); ("B", String("ID:")); ("C", String(", "))]  
-
-let (g2:grammar) = "X", [("X", Vars(["A";"X";"B"]));
-          ("X", Vars(["C"; "X"; "D"]));
-          ("X", Vars(["X";"X"]));("X", Epsilon)] (* par contre ambigüe *)
-
-*)
-
 type syntagm = string (** non terminaux *)
 type token = string (** terminaux *)
+
+
+type production = 
+    | Epsilon
+    | Item of token
+    | Var of syntagm 
+type rule = Rule of syntagm * production * production 
+type grammar = Grammar of syntagm * rule list 
+
+
+let (g1:grammar) = Grammar("Z" , [
+    Rule("Z", Item("{"), Var("W"));
+    Rule("W", Var("X"), Var(U)); 
+    Rule("X", Item("ID:"),Var("Y"));
+    Rule("X", Item("ID:"), Var("Z"));
+    Rule("Y", Item("NUM"), Epsilon);
+    Rule("Y", Item("STR"), Epsilon);
+    Rule("U", Item(", "), Var("X"));
+    Rule("U", Item("}"), Epsilon);
+]) 
+
+let (g2:grammar) = Grammar("X", [
+    Rule("X", Item("("), Var("W"));
+    Rule("W", Var("X"), Item(")"));
+    Rule("X", Item("["), Var("Y"));
+    Rule("Y", Var("X"), Item("]"));
+    Rule("X", Var("X"), Var("X"));
+    Rule("X", Epsilon, Epsilon)
+]) (* par contre ambigüe *)
 
 (**
     a grammarTree represents a grammar under the form of a tree. 
