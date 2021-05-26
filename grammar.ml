@@ -26,6 +26,10 @@ let (g2:grammar) = Grammar("X", [
     ])
 ]) (* par contre ambigüe *)
 
+
+
+
+
 (**
     a grammarTree represents a grammar under the form of a tree. 
     The initial state is represented by Nill -> an empty tree
