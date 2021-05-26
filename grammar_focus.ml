@@ -35,68 +35,44 @@ let rec grammar_of_focus : focus -> grammar = function
 
 let focus_up : focus -> (focus*path) option = function
   | GrammarFocus(g, Root) -> None
-  | RulesFocus(r, Grammar2X(s, r_ctx, ctx)) -> Some(GrammarFocus(Grammar(s, Focus.list_of_ctx r r_ctx),ctx), down_rights (List.length (fst r_ctx)) )
-  | ProductionFocus(p, Rules2X(s, p_ctx, ctx)) -> Some(RulesFocus(Rules(s, Focus.list_of_ctx p p_ctx),ctx), down_rights (List.length (fst p_ctx)))
+  | RulesFocus(r, Grammar2X(s, r_ctx, ctx)) -> Some(GrammarFocus(Grammar(s, Focus.list_of_ctx r r_ctx),ctx), down_rights (List.length (fst r_ctx) + 1) )
+  | ProductionFocus(p, Rules2X(s, p_ctx, ctx)) -> Some(RulesFocus(Rules(s, Focus.list_of_ctx p p_ctx),ctx), down_rights (List.length (fst p_ctx) + 1))
   | SyntagmFocus(s, Rules1(ctx, p)) -> Some(RulesFocus(Rules(s,p),ctx), down_rights 0)
   | SyntagmFocus(s, Grammar1(ctx, r)) -> Some(GrammarFocus(Grammar(s,r),ctx), down_rights 0) 
   | SymbolFocus(s, ProductionX(s_ctx, ctx)) -> Some(ProductionFocus(Production(Focus.list_of_ctx s s_ctx),ctx), down_rights (List.length (fst s_ctx)))
 
 
-
-let focus_down (f:focus) : focus option = 
-
-let focus_left (f:focus) : focus option = 
-
-let focus_right (f:focus) : focus option = 
-
-
-
-
-
-
-
+let rec focus_of_path_focus : path * focus -> focus (* raises Invalid_path *) = function
+ | [], f -> f
+ | DOWN::RIGHT::p, GrammarFocus(Grammar(s, h::t),ctx)-> focus_of_path_focus (p, RulesFocus(h, Grammar2X(s,([],t),ctx))) 
+ | DOWN::p, GrammarFocus(Grammar(s, r),ctx) -> focus_of_path_focus (p, SyntagmFocus(s, Grammar1(ctx,r))) 
+ | RIGHT::p, RulesFocus(r, Grammar2X(s, (ll, h::rr), ctx)) -> focus_of_path_focus (p, RulesFocus(h, Grammar2X(s, (r::ll, rr), ctx))) 
+ | DOWN::RIGHT::p, RulesFocus(Rules(s, h::prods), ctx) -> focus_of_path_focus (p, ProductionFocus(h, Rules2X(s,([], prods),ctx)))
+ | DOWN::p, RulesFocus(Rules(s, prods), ctx) -> focus_of_path_focus (p, SyntagmFocus(s, Rules1(ctx, prods)))
+ | RIGHT::p, ProductionFocus(prod, Rules2X(s, (ll, h::rr), ctx)) -> focus_of_path_focus (p, ProductionFocus(h, Rules2X(s, (prod::ll, rr), ctx)))
+ | DOWN::p, ProductionFocus(Production(h::t), ctx) -> focus_of_path_focus (p, SymbolFocus(h, ProductionX(([], t), ctx)))
+ | RIGHT::p, SymbolFocus(s, ProductionX((ll, h::rr), ctx)) -> focus_of_path_focus (p, SymbolFocus(h, ProductionX((s::ll, rr), ctx)))
+ | _ -> raise Invalid_path
 
 
+let focus_down (foc : focus) : focus option =
+  try Some (focus_of_path_focus ([DOWN], foc))
+  with Invalid_path -> None
+    
+let focus_right (foc : focus) : focus option =
+  match focus_up foc with
+  | None -> None
+  | Some (foc',path') ->
+     try Some (focus_of_path_focus ((path'@[RIGHT]), foc'))
+     with Invalid_path -> None
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-type binary_tree =
-Nil
-| Cons of binary_tree * binary_tree
-
-type binary_path =
-Top
-| Left of binary_path * binary_tree
-| Right of binary_tree * binary_path
-type binary_location = Loc of binary_tree * binary_path
-let change (Loc(_,p)) t = Loc(t,p)
-
-let go_left (Loc(t,p)) = match p with
-Top -> failwith "left of top"
-| Left(father,right) -> failwith "left of Left"
-| Right(left,father) -> Loc(left,Left(father,t))
-let go_right (Loc(t,p)) = match p with
-Top -> failwith "right of top"
-| Left(father,right) -> Loc(right,Right(t,father))
-| Right(left,father) -> failwith "right of Right"
-let go_up (Loc(t,p)) = match p with
-Top -> failwith "up of top"
-| Left(father,right) -> Loc(Cons(t,right),father)
-| Right(left,father) -> Loc(Cons(left,t),father)
-let go_first (Loc(t,p)) = match t with
-Nil -> failwith "first of Nil"
-| Cons(left,right) -> Loc(left,Left(p,right))
-let go_second (Loc(t,p)) = match t with
-Nil -> failwith "second of Nil"
-| Cons(left,right) -> Loc(right,Right(left,p))
+let focus_left (foc : focus) : focus option =
+  match focus_up foc with
+  | None -> None
+  | Some (foc',path') ->
+     match List.rev path' with
+     | [] -> None
+     | DOWN::_ -> None
+     | RIGHT::path'' ->
+        try Some (focus_of_path_focus (path'', foc'))
+        with Invalid_path -> None
