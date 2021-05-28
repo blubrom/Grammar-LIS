@@ -1,27 +1,28 @@
 
 module Focus = Grammar_focus
+(**
 module Extension = Grammar_extent
 module Suggestions = Grammar_suggestions
+*)
+
+type extent = unit 
+type suggestion = unit 
 		       
 class place (lis : lis) (focus : Focus.focus) =
 object
-  inherit [lis,Focus.focus,Extent.extent,Suggestions.suggestion] Lis.place lis focus
+  inherit [lis,Focus.focus,extent,suggestion] Lis.place lis focus
 
-  val mutable extent : Extent.extent option = None
+  val mutable extent : extent option = None
 								    
   method eval k_extent k_suggestions = ()
 
-  method activate sugg = ()
+  method activate sugg = None
 
   method abort = ()
 
   method json = Focus.focus_to_yojson focus
 
-  method results =
-    match extent with
-    | None -> failwith "Results are not yet available"
-    | Some ext -> Jsoniq_files.mime_contents_of_extent ext
-end
+  method results = ("","")
 
 and lis =
 object (self)

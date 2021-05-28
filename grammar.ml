@@ -8,6 +8,7 @@ type symbol =
 type production = Production of symbol list
 type rules = Rules of syntagm * production list
 type grammar = Grammar of syntagm * rules list 
+let grammar_to_yojson : grammar -> Yojson.Safe.t = failwith "TODO"
 
 
 let (g1:grammar) = Grammar("Z" , [
@@ -25,6 +26,7 @@ let (g2:grammar) = Grammar("X", [
         Production([])
     ])
 ]) (* par contre ambigüe *)
+
 
 
 
