@@ -4,6 +4,10 @@ module Lis = Grammar_lis
 (* LIS building *)
 let make_lis (args : (string * string) list) = new Lis.lis
 
+let html_of_word : Grammar_syntax.word -> Html.t = function 
+  | `Var v -> Html.span ~classe:"word-var" v
+  | `Token t -> Html.span ~classe:"word-token" t
+
 (* UI widgets *)
 			      
 let w_focus =
@@ -13,7 +17,7 @@ let w_focus =
       
 let render_place place k =
   Jsutils.firebug "XML of place";
-  let xml = Grammar_syntax.syn_focus Lis.library place#focus in
+  let xml = Grammar_syntax.syn_focus place#focus in
   Jsutils.firebug "focus#set_syntax";
   w_focus#set_syntax xml;
   w_focus#on_focus_change (fun foc ->

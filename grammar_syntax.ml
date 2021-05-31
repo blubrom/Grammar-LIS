@@ -4,15 +4,8 @@ open Grammar_focus
 
 (* syntax definition *)
 type word = [ `Var of Grammar.syntagm 
-            | `Symbol of Grammar.symbol 
-            | `Filename of string 
-            | `ContextItem 
-            | `ContextEnv 
-            | `TheFocus 
-            | `Ellipsis ]
-type input = [ `Symbol of Grammar.symbol Focus.input
-	        | `Syntagm of Grammar.syntagm Focus.input
-	        | `FileString of (string * string) Focus.input ]
+            | `Token of Grammar.token ]
+type input = [ ]
 
 type syn = (word,input,focus) xml
 
@@ -25,7 +18,7 @@ let rec syn_list ~limit (f : 'a -> syn) (l : 'a list) : syn list =
      else f x :: syn_list ~limit:(limit-1) f r
 		      
 let syn_syntagm (s:syntagm) : syn = [Word(`Var s)]
-let syn_token (t:token) : syn =  [Word(`Symbol (Item(t)))]
+let syn_token (t:token) : syn =  [Word(`Token t)]
 let syn_symbol : symbol -> syn = function 
     | Item(t) -> syn_token t 
     | Var(v) -> syn_syntagm v
