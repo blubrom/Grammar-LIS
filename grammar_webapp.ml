@@ -60,7 +60,7 @@ let handle_document_keydown ev place k =
        true
   else false
   
-let error_message : exn -> string = ()
+let error_message : exn -> string = ""
 
 
 let _ =

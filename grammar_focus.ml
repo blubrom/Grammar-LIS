@@ -91,12 +91,59 @@ let focus_to_yojson (foc : focus) : Yojson.Safe.t =
   `Assoc [ "grammar", Grammar.grammar_to_yojson g;
 	   "path", Focus.path_to_yojson path ]
 
-(*
-let rec delete (foc : focus) : focus option =
-  match foc with
-  | GrammarFocus(g, ctx) -> None
-  | RulesFocus(r, ctx) -> failwith "TODO"
-  | ProductionFocus(p, ctx) -> failwith "TODO"
-  | SymbolFocus(s, ctx) -> failwith "TODO"
-  | SyntagmFocus(s, ctx) -> failwith "TODO"
-*)
+let rec focus_succ (foc : focus) : focus option =
+  match focus_down foc with
+  | Some foc' -> Some foc'
+  | None -> focus_succ_aux foc
+and focus_succ_aux foc =
+  match focus_right foc with
+  | Some foc' -> Some foc'
+  | None ->
+     match focus_up foc with
+     | Some (foc',_) -> focus_succ_aux foc'
+     | None -> None
+
+let rec focus_pred (foc : focus) : focus option =
+  match focus_left foc with
+  | Some foc' -> focus_pred_down_rightmost foc'
+  | None ->
+     match focus_up foc with
+     | Some (foc',_) -> Some foc'
+     | None -> None
+and focus_pred_down_rightmost foc =
+  match focus_down foc with
+  | None -> Some foc
+  | Some foc' -> focus_pred_rightmost foc'
+and focus_pred_rightmost foc =
+  match focus_right foc with
+  | Some foc' -> focus_pred_rightmost foc'
+  | None -> focus_pred_down_rightmost foc
+
+let rec delete (foc : focus) : focus option = match foc with
+  | GrammarFocus (_, ctx) -> begin match ctx with 
+    | Root -> None
+  end
+  | RulesFocus (_, ctx) -> begin match ctx with 
+    | Grammar2X (s, r_ctx, ctx') -> Some (GrammarFocus(Grammar(s, Focus.list_of_ctx_none r_ctx),ctx'))
+  end
+  | ProductionFocus (_, ctx) -> begin match ctx with 
+    | Rules2X (s, p_ctx, ctx') -> Some (RulesFocus(Rules(s, Focus.list_of_ctx_none p_ctx), ctx'))
+  end 
+  | SymbolFocus (_, ctx) -> begin match ctx with 
+    | ProductionX (sl, ctx') -> Some (ProductionFocus(Production(Focus.list_of_ctx_none sl), ctx'))
+  end 
+  | SyntagmFocus (_, ctx) -> begin match ctx with 
+    (** quand on supprime la variable de règles, on supprime toutes les productions associées à cette variable  *)
+    | Rules1(ctx', pl) -> begin match ctx' with 
+      | Grammar2X (s, (ll,rr), ctx'') -> begin match ll, rr with 
+        | [], [] -> Some (GrammarFocus(Grammar(s, []), ctx''))
+        | [], Rules(s', p) :: t ->  Some (RulesFocus(Rules(s', p), Grammar2X(s,([], t), ctx'')))
+        | Rules(s', p) :: t, rr ->  Some (RulesFocus(Rules(s', p), Grammar2X(s, (t, rr), ctx'')))
+      end
+    end
+    (** quand on supprime l'axiome de la grammaire, on choisit par défaut la variable qui apparait en premier pour le remplacer *)
+    | Grammar1 (ctx', rl) -> begin match Focus.focus_list_of_list rl with 
+      | [] -> None 
+      | (Rules(s, pl), _) :: t -> Some (GrammarFocus(Grammar(s, rl), ctx'))
+    end
+  end 
