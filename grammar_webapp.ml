@@ -16,24 +16,19 @@ let render_place place k =
   let xml = Grammar_syntax.syn_focus Lis.library place#focus in
   Jsutils.firebug "focus#set_syntax";
   w_focus#set_syntax xml;
-  w_focus#on_focus_change
-    (fun foc ->
-     let p = new Grammar_lis.place place#lis foc in
-     k ~push_in_history:false p);
-  w_focus#on_focus_up
-    (fun () ->
-     match Grammar_focus.focus_up place#focus with
-     | Some (foc,_) ->
-	let p = new Grammar_lis.place place#lis foc in
-	k ~push_in_history:false p
+  w_focus#on_focus_change (fun foc ->
+    let p = new Grammar_lis.place place#lis foc in
+    k ~push_in_history:false p);
+  w_focus#on_focus_up (fun () -> 
+    match Grammar_focus.focus_up place#focus with
+     | Some (foc,_) -> let p = new Grammar_lis.place place#lis foc in
+	      k ~push_in_history:false p
      | None -> ());
-  w_focus#on_focus_delete
-    (fun () ->
-     match Grammar_focus.delete place#focus with
-     | Some foc ->
-	let p = new Grammar_lis.place place#lis foc in
-	k ~push_in_history:true p
-     | None -> ());
+  w_focus#on_focus_delete (fun () ->
+    match Grammar_focus.delete place#focus with
+     | Some foc -> let p = new Grammar_lis.place place#lis foc in
+	      k ~push_in_history:true p
+     | None -> ())
 
 
 let handle_document_keydown ev place k =
@@ -60,8 +55,9 @@ let handle_document_keydown ev place k =
        true
   else false
   
-let error_message : exn -> string = ""
-
+let error_message : exn -> string = function 
+  | Failure msg -> msg
+  | exn -> "Unexpected error: " ^ Printexc.to_string exn
 
 let _ =
   Webapp.start

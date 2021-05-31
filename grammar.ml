@@ -10,6 +10,11 @@ type rules = Rules of syntagm * production list
 type grammar = Grammar of syntagm * rules list 
 let grammar_to_yojson : grammar -> Yojson.Safe.t = failwith "TODO"
 
+let grammar_of_yojson : Yojson.Safe.t -> (grammar,string) Result.result =
+  let open Result in function
+  | _ -> Error "Invalid serialization of item"
+
+
 
 let (g1:grammar) = Grammar("Z" , [
  Rules("Z", [Production([Item("{"); Var("X"); Var("U")])]);

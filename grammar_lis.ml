@@ -23,7 +23,7 @@ object
   method json = Focus.focus_to_yojson focus
 
   method results = ("","")
-
+end
 and lis =
 object (self)
   inherit [place] Lis.lis

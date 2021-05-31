@@ -91,6 +91,10 @@ let focus_to_yojson (foc : focus) : Yojson.Safe.t =
   `Assoc [ "grammar", Grammar.grammar_to_yojson g;
 	   "path", Focus.path_to_yojson path ]
 
+let focus_of_yojson (x : Yojson.Safe.t) : (focus,string) Result.result =
+  match x with
+  | _ -> Result.Error "Invalid serialization of a focus"
+
 let rec focus_succ (foc : focus) : focus option =
   match focus_down foc with
   | Some foc' -> Some foc'
