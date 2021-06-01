@@ -16,6 +16,11 @@ let grammar_of_yojson : Yojson.Safe.t -> (grammar,string) Result.result =
   | _ -> Error "Invalid serialization of item"
 
 
+let initial_grammar = Grammar("Z", [
+  Rules("Z", [Production([Var("U"); Var("V")])]);
+  Rules("U", [Production([Item("a")]);Production([Item("b")])]);
+  Rules("V", [])
+  ]) 
 
 let (g1:grammar) = Grammar("Z" , [
  Rules("Z", [Production([Item("{"); Var("X"); Var("U")])]);
@@ -37,7 +42,7 @@ let (g2:grammar) = Grammar("X", [
 
 
 
-
+(** 
 (**
     a grammarTree represents a grammar under the form of a tree. 
     The initial state is represented by Nill -> an empty tree
@@ -75,3 +80,4 @@ Var("Z",
         )
     ),
 Nill)
+*)

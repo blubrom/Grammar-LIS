@@ -81,15 +81,11 @@ let focus_left (foc : focus) : focus option =
      | [] -> None
      | DOWN::_ -> None
      | RIGHT::path'' ->
-        try Some (focus_of_path_focus (path'', foc'))
+        try Some (focus_of_path_focus (List.rev path'', foc'))
         with Invalid_path -> None
 
 
-let initial_focus = let g = Grammar("Z", [
-  Rules("Z", [Production([Var("U"); Var("V")])]);
-  Rules("U", [Production([Item("a")]);Production([Item("b")])]);
-  Rules("V", [])
-  ]) in GrammarFocus(g , Root)
+let initial_focus = GrammarFocus(Grammar.initial_grammar, Root)
 
 let focus_to_yojson (foc : focus) : Yojson.Safe.t =
   let g, path = grammar_path_of_focus foc in
@@ -101,33 +97,36 @@ let focus_of_yojson (x : Yojson.Safe.t) : (focus,string) Result.result =
   | _ -> Result.Error "Invalid serialization of a focus"
 
 let rec focus_succ (foc : focus) : focus option =
-  match focus_down foc with
+  match focus_right foc with
   | Some foc' -> Some foc'
   | None -> focus_succ_aux foc
+
 and focus_succ_aux foc =
-  match focus_right foc with
+  match focus_down foc with
   | Some foc' -> Some foc'
   | None ->
      match focus_up foc with
-     | Some (foc',_) -> focus_succ_aux foc'
+     | Some (foc',_) -> focus_succ foc'
      | None -> None
 
 let rec focus_pred (foc : focus) : focus option =
   match focus_left foc with
-  | Some foc' -> focus_pred_down_rightmost foc'
+  | Some foc' -> Some foc'
   | None ->
      match focus_up foc with
      | Some (foc',_) -> Some foc'
      | None -> None
+(*
 and focus_pred_down_rightmost foc =
   match focus_down foc with
   | None -> Some foc
   | Some foc' -> focus_pred_rightmost foc'
+
 and focus_pred_rightmost foc =
   match focus_right foc with
   | Some foc' -> focus_pred_rightmost foc'
   | None -> focus_pred_down_rightmost foc
-
+*)
 let rec delete (foc : focus) : focus option = match foc with
   | GrammarFocus (_, ctx) -> begin match ctx with 
     | Root -> None
