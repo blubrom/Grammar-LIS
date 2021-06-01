@@ -8,7 +8,8 @@ type symbol =
 type production = Production of symbol list
 type rules = Rules of syntagm * production list
 type grammar = Grammar of syntagm * rules list 
-let grammar_to_yojson : grammar -> Yojson.Safe.t = failwith "TODO"
+let grammar_to_yojson : grammar -> Yojson.Safe.t = function 
+ | _ -> failwith "TODO"
 
 let grammar_of_yojson : Yojson.Safe.t -> (grammar,string) Result.result =
   let open Result in function

@@ -84,7 +84,12 @@ let focus_left (foc : focus) : focus option =
         try Some (focus_of_path_focus (path'', foc'))
         with Invalid_path -> None
 
-let initial_focus = GrammarFocus(Grammar("Z", []), Root)
+
+let initial_focus = let g = Grammar("Z", [
+  Rules("Z", [Production([Var("U"); Var("V")])]);
+  Rules("U", [Production([Item("a")]);Production([Item("b")])]);
+  Rules("V", [])
+  ]) in GrammarFocus(g , Root)
 
 let focus_to_yojson (foc : focus) : Yojson.Safe.t =
   let g, path = grammar_path_of_focus foc in

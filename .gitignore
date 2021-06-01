@@ -29,3 +29,5 @@ setup.log
 _opam/
 
 html/script.js
+html/*.png 
+html/*.jpg
