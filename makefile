@@ -10,6 +10,8 @@ all: $(GRAMMAR) grammar_webapp.ml
 
 clean:
 	rm -f *.cm[ioax]
+	rm -f html/*.byte
+	rm -f html/*.js
 
 .SUFFIXES: .ml .mli .cmo .cmi
 
