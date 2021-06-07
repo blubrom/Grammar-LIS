@@ -53,7 +53,6 @@ let rec tree_of_item (t: (Parsing.item list) array) (i:int) (it:Parsing.item) : 
                                         (Node(s, List.rev l), (k,i))
                                     | _ -> assert false 
 
-(* TODO : modifier *)
 let get_tree (t: (Parsing.item list) array) (i: int)  : (derivation_tree * (int*int)) option = 
     if List.length t.(i) = 0 then None else (* we are sure we will calculate at leat one tree because there is at least one item in l *)
         let l = (List.map (tree_of_item t i) t.(i)) in 
@@ -76,13 +75,24 @@ let get_derivations (t : (Parsing.item list) array) : (derivation_tree * (int*in
     done;
     !derivations_list
 
+let get_extent_of_derivations : (derivation_tree * (int*int)) list -> extent = function | _ -> failwith "TODO" 
+(* prendre le mot d'entrée et les arbres obtenus et reconstituer une liste avec soit un arbre si on a reconnu un motif soit les lettres si elles n'ont pas été recconues*)
+
+let extent_of_focus : Grammar_focus.focus -> extent = function 
+    | GrammarFocus(g, ctx) -> failwith "TODO" (* simplement lancer earley  *)
+    | RulesFocus(r,ctx) -> failwith "TODO" (* lancer earley en ayant mis comme axiome le syntagme de r *)
+    | ProductionFocus(p, ctx) -> failwith "TODO" (* lancer earley avec une initialisation modifiée qui ne met que la règle s->p dans le tableau*)
+    | SyntagmFocus(s, ctx) -> failwith "TODO" (* se rammener au cas grammar ou rules *)
+    | SymbolFocus(s, ctx) -> failwith "TODO " (* se ramener au cas production mais en plus on voudra surligner le symbole dans les blocs reconnus*)
+
 (* Tests *)
 
-let t1 = Node("S", [Node("E", [Node("E", [Node("N", [Node("F", [Leaf("a")])])]); Leaf("+"); Node("N", [Node("F", [Leaf("a")])])])])
-let t2 = Node("S", [Node("E", [Node("N", [Node("F", [Leaf("a")])])])])
+let d = get_derivations (Parsing.get_fully_parsed (Parsing.t))
 
-let d = List.map (fun (x,_) -> x) (get_derivations (Parsing.get_fully_parsed (Parsing.t))) 
+let _ = Printf.printf "combien d'arbres ? : %d\n" (List.length d)
 
-let _ = Printf.printf "test subtree : l'arbre est-il bien inclus ? : %B"  (subtree t1 t2) 
+let rec print_tree t = match t with 
+    | Node(s, l) -> print_string ("Node " ^ s ^ "( "); List.fold_left (fun accu t' -> print_tree t') () l; print_string ")\n"
+    | Leaf(s) -> Printf.printf "%s \n" s 
 
-let _ = Printf.printf "l'arbre est-il bien inclus dans la liste des résultats ? : %B" (List.mem t1 d)
+let _ = List.fold_left (fun accu (t, (k,e)) -> print_tree t; Printf.printf "start %d , end %d \n" k e ) () d
