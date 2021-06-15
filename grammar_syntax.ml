@@ -144,13 +144,17 @@ let rec syn_tree depth t : syn =
                     [q]
                     end
 
-let syn_extent ext : syn = 
-    let l = 
-    List.rev 
-    (List.fold_left 
-        (fun accu x -> match x with  
-                        | Token(t) -> [Suspended(syn_token t)] :: accu 
-                        | Tree(t) -> (syn_tree 0 t) :: accu) 
-        [] ext)
-    in [Enum("", l)]
+let syn_extent_word ext_w : syn = match ext_w with 
+    | Word(w) -> 
+         let l = 
+        List.rev 
+        (List.fold_left 
+            (fun accu x -> match x with  
+                            | Token(t) -> [Suspended(syn_token t)] :: accu 
+                            | Tree(t) -> (syn_tree 0 t) :: accu) 
+            [] w)
+        in [Enum("", l)]
+    
+
+
 

@@ -2,7 +2,8 @@ open Grammar
 
 type derivation_tree = | Leaf of token | Node of syntagm  * derivation_tree list
 type extent_item = | Token of token | Tree of derivation_tree
-type extent = extent_item list 
+type extent_word = Word of extent_item list 
+type extent = Extent of extent_word list
 
 (*
 (* returns true iff a is a subtree of b*)
@@ -107,7 +108,7 @@ let rec derivations_of_focus (w : token array) (f: Grammar_focus.focus) : ((deri
                                  (* se ramener au cas production mais en plus on voudra surligner le symbole dans les blocs reconnus*)
 
 
-let compute_extent w f : extent = 
+let compute_extent_word w f : extent_word = 
     let res = ref [] in 
     let l = ref (derivations_of_focus w f) in 
     let n = Array.length w in 
@@ -117,7 +118,9 @@ let compute_extent w f : extent =
             | (t, (k,j)) :: tl when k = !i -> l := tl; i := j; res := (Tree(t))::!res
             | _ -> res := (Token(w.(!i)))::!res; incr i  
     done;
-    List.rev (!res)
+    Word(List.rev (!res))
+
+let compute_extent words f : extent = Extent(List.map (fun w -> compute_extent_word w f) words)  
 
 (* Tests *)
 (*

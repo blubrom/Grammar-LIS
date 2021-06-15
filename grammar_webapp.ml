@@ -15,13 +15,12 @@ class results
   ~(id : Html.id) (* where to insert the widget in the DOM *)
   =
 object
-  method set_contents (ext:Grammar_extent.extent) : unit =
-    let html = 
-      (let xml = Grammar_syntax.syn_extent ext in 
-      Html.syntax ~html_of_word xml)
-	 in
-    Jsutils.jquery_set_innerHTML (Html.selector_id id) html
-end
+  method set_contents (ext:Grammar_extent.extent) : unit = match ext with 
+    |Extent(e) ->
+        let strl = List.map (fun ext_w -> let xml = Grammar_syntax.syn_extent_word ext_w in Html.syntax ~html_of_word xml) e
+        in let html =  Html.ul (List.map (fun s -> (None, None, None, s)) strl) in 
+        Jsutils.jquery_set_innerHTML (Html.selector_id id) html
+  end
 
 let w_result =  new results 
     ~id:"lis-results"

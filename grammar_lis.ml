@@ -13,10 +13,15 @@ object
 
   val mutable extent : Extension.extent option = None
 
-  val w : Grammar.token array = [| "b" ; "a" ; "+" ; "(" ; "a" ; "*" ; "a"; ")"; "w"|]
+  val words : (Grammar.token array) list= 
+    [
+      [| "b" ; "a" ; "+" ; "(" ; "a" ; "*" ; "a"; ")"; "w"|];
+      [| "a" ; "+" ; "a"|];
+      [| "b"; "-" ; "(" ; "a" ; "/" ; "a" ; "+" ; "a" ; ")" |]
+    ]
 								    
   method eval k_extent k_suggestions = 
-      let ext = Extension.compute_extent w focus in
+      let ext = Extension.compute_extent words focus in
       extent <- Some ext;
       k_extent ext;
 
