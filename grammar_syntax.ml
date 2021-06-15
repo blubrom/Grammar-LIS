@@ -116,3 +116,41 @@ and syn_symbol_ctx (i:symbol) (ctx: symbol_ctx) (s:syn) : syn =
                 (i, ll_rr) xml_s)
         )])
 
+open Grammar_extent
+class color_table = 
+object 
+    val nb_colors = 8
+    val mutable curr : int = 0
+    val table : (syntagm, int) Hashtbl.t = Hashtbl.create 8
+
+    method getColor (s:syntagm) : int = match Hashtbl.find_opt table s with 
+        | Some(i) -> i 
+        | None -> curr <- (curr + 1 mod nb_colors); Hashtbl.add table s curr; curr 
+end
+
+let table = new color_table
+
+let rec syn_tree depth t : syn = 
+    match t with 
+    | Leaf(s) ->  [Quote("<b>",syn_token s,"</b>")]
+    | Node(s, l) -> begin 
+                    let classe = "color"^(string_of_int (table#getColor s)) in 
+                    let q = match l with 
+                        | [t'] -> Quote("", syn_tree (depth+1) t', Html.span ~classe ("<sub>"^s^"</sub>"))
+                        | _ -> Quote(Html.span ~classe "[", 
+                           [Enum("", List.rev(List.fold_left (fun accu t' -> (syn_tree (depth+1) t') :: accu) [] l))],
+                           Html.span ~classe ("]<sub>"^s^"</sub>") ) 
+                    in 
+                    [q]
+                    end
+
+let syn_extent ext : syn = 
+    let l = 
+    List.rev 
+    (List.fold_left 
+        (fun accu x -> match x with  
+                        | Token(t) -> [Suspended(syn_token t)] :: accu 
+                        | Tree(t) -> (syn_tree 0 t) :: accu) 
+        [] ext)
+    in [Enum("", l)]
+

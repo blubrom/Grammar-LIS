@@ -1,6 +1,6 @@
 CORE=focus.cmo syntax.cmo lis.cmo
 WEBAPP=jsutils.cmo webapp.cmo html.cmo widget_focus.cmo widget_suggestions.cmo widget_table.cmo widget_commandline.cmo
-GRAMMAR=grammar.cmo grammar_focus.cmo grammar_lis.cmo grammar_syntax.cmo parsing.cmo grammar_extent.cmo
+GRAMMAR=grammar.cmo grammar_focus.cmo parsing.cmo grammar_extent.cmo grammar_lis.cmo grammar_syntax.cmo 
 
 FLAGS= -package yojson,ppx_deriving_yojson,csv,js_of_ocaml,js_of_ocaml-ppx -I ../fablis/core -I ../fablis/core/webapp
 

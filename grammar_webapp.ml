@@ -1,4 +1,5 @@
 open Grammar
+open Jsutils
 module Lis = Grammar_lis
 
 (* LIS building *)
@@ -9,6 +10,21 @@ let html_of_word : Grammar_syntax.word -> Html.t = function
   | `Token t -> Html.span ~classe:"word-token" t
 
 (* UI widgets *)
+
+class results
+  ~(id : Html.id) (* where to insert the widget in the DOM *)
+  =
+object
+  method set_contents (ext:Grammar_extent.extent) : unit =
+    let html = 
+      (let xml = Grammar_syntax.syn_extent ext in 
+      Html.syntax ~html_of_word xml)
+	 in
+    Jsutils.jquery_set_innerHTML (Html.selector_id id) html
+end
+
+let w_result =  new results 
+    ~id:"lis-results"
 			      
 let w_focus =
   new Widget_focus.widget
@@ -32,8 +48,12 @@ let render_place place k =
     match Grammar_focus.delete place#focus with
      | Some foc -> let p = new Grammar_lis.place place#lis foc in
 	      k ~push_in_history:true p
-     | None -> ())
-
+     | None -> ());
+  Jsutils.firebug "place#eval";
+  place#eval
+    (fun ext -> Jsutils.firebug "ext computed"; 
+                w_result#set_contents ext)
+    (fun sugg -> Jsutils.firebug "sugg computed")
 
 let handle_document_keydown ev place k =
   let open Js_of_ocaml in
@@ -68,4 +88,17 @@ let _ =
     ~make_lis
     ~render_place
     ~handle_document_keydown
-    ~error_message
+    ~error_message;
+    (*
+    jquery "#button-open-data" (onclick (fun elt ev -> jquery_click "#data-open"; true));
+    jquery_input
+	    "#data-open"
+	   (onchange (fun input ev ->
+		    Jsutils.file_string_of_input
+		      input
+		      (fun (filename,contents) ->
+		       let json = Yojson.Safe.from_string contents in
+		       hist#open_place json;
+		       refresh ())));
+*)
+

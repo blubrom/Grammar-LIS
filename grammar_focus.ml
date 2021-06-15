@@ -84,6 +84,7 @@ let focus_left (foc : focus) : focus option =
         try Some (focus_of_path_focus (List.rev path'', foc'))
         with Invalid_path -> None
 
+let focus_of_grammar_path (g, p) = focus_of_path_focus (p,(GrammarFocus(g, Root)))
 
 let initial_focus = GrammarFocus(Grammar.initial_grammar, Root)
 
@@ -94,6 +95,15 @@ let focus_to_yojson (foc : focus) : Yojson.Safe.t =
 
 let focus_of_yojson (x : Yojson.Safe.t) : (focus,string) Result.result =
   match x with
+    | `Assoc ["grammar", x_g; "path", x_path] ->
+     Result.bind
+       (Grammar.grammar_of_yojson x_g)
+       (fun g -> 
+       Result.bind
+	    (Focus.path_of_yojson x_path)
+	    (fun path ->
+	   let foc = focus_of_grammar_path (g,path) in
+	   Result.Ok foc))
   | _ -> Result.Error "Invalid serialization of a focus"
 
 let rec focus_succ (foc : focus) : focus option =

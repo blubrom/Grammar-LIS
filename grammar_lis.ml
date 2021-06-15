@@ -1,20 +1,24 @@
 
 module Focus = Grammar_focus
-(**
 module Extension = Grammar_extent
+(*
 module Suggestions = Grammar_suggestions
 *)
 
-type extent = unit 
 type suggestion = unit 
 		       
 class place (lis : lis) (focus : Focus.focus) =
 object
-  inherit [lis,Focus.focus,extent,suggestion] Lis.place lis focus
+  inherit [lis,Focus.focus,Extension.extent,suggestion] Lis.place lis focus
 
-  val mutable extent : extent option = None
+  val mutable extent : Extension.extent option = None
+
+  val w : Grammar.token array = [| "b" ; "a" ; "+" ; "(" ; "a" ; "*" ; "a"; ")"; "w"|]
 								    
-  method eval k_extent k_suggestions = ()
+  method eval k_extent k_suggestions = 
+      let ext = Extension.compute_extent w focus in
+      extent <- Some ext;
+      k_extent ext;
 
   method activate sugg = None
 

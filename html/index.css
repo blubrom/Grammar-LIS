@@ -120,7 +120,7 @@ select {
 #focus-dropdown-content ul {
     list-style-type: none;
     padding: 0px;
-    line-height: 90%; // avoids wasted space between items
+    line-height: 90%; /* avoids wasted space between items */
 }
 #focus-dropdown-content li {
     width: 95%;
@@ -143,7 +143,7 @@ select {
 .list-incrs.css-treeview ul {
     list-style-type: none;
     padding: 0px;
-    line-height:90%; // avoids wasted space between items
+    line-height:90%; /* avoids wasted space between items */
 }
 .list-incrs.css-treeview > ul {
     padding-top: 8px;
@@ -225,6 +225,39 @@ input.input-inverse:checked ~ .label-checked { display:inline; margin:0px; }
 #list-results {
 }
 
+.color0{
+    color:crimson;
+}
+
+.color1{
+    color:darkblue;
+}
+
+.color2{
+    color:darkgoldenrod;
+}
+
+.color3{
+    color:darkgreen;
+}
+
+.color4{
+    color:darkviolet;
+}
+
+.color5{
+    color:#333;
+}
+
+.color6{
+    color:limegreen;
+}
+
+.color7{
+    color:gold;
+}
+
+
 table {
     border-collapse:collapse;
 }
@@ -304,3 +337,5 @@ input:checked + .slider:before {
   -ms-transform: translateX(20px);
   transform: translateX(20px);
 }
+
+

@@ -1,22 +1,29 @@
-type syntagm = string (** non terminaux *)
-type token = string (** terminaux *)
+type syntagm = string (** non terminaux *) [@@ deriving yojson]
+type token = string (** terminaux *) [@@ deriving yojson]
 
 
 type symbol = 
     | Item of token
     | Var of syntagm 
-type production = Production of symbol list
-type rules = Rules of syntagm * production list
-type grammar = Grammar of syntagm * rules list 
+    [@@ deriving yojson]
+type production = Production of symbol list [@@ deriving yojson]
+type rules = Rules of syntagm * production list [@@ deriving yojson]
+type grammar = Grammar of syntagm * rules list [@@ deriving yojson]
+(*
 let grammar_to_yojson : grammar -> Yojson.Safe.t = function 
  | _ -> failwith "TODO"
 
 let grammar_of_yojson : Yojson.Safe.t -> (grammar,string) Result.result =
   let open Result in function
   | _ -> Error "Invalid serialization of item"
+*)
 
+let initial_grammar = Grammar("S", [Rules("S", [Production([Var("E")])]); 
+    Rules("E", [Production([Var("E"); Item("+"); Var("N")]); Production([Var("E"); Item("-"); Var("N")]); Production([Var("N")])]);
+    Rules("N", [Production([Var("N"); Item("*"); Var("F")]); Production([Var("N"); Item("/"); Var("F")]); Production([Var("F")])]);
+    Rules("F", [Production([Item("a")]); Production([Item("-"); Var("F")]); Production([Item("+"); Var("F")]); Production([Item("("); Var("E"); Item(")")])])])
 
-let initial_grammar = Grammar("Z", [
+let g3 = Grammar("Z", [
   Rules("Z", [Production([Var("U"); Var("V")])]);
   Rules("U", [Production([Item("a")]);Production([Item("b")])]);
   Rules("V", [])
