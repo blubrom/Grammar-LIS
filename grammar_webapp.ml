@@ -9,6 +9,16 @@ let html_of_word : Grammar_syntax.word -> Html.t = function
   | `Var v -> Html.span ~classe:"word-var" v
   | `Token t -> Html.span ~classe:"word-token" t
 
+let html_info_of_input (input : Grammar_syntax.input) : Html.input_info =
+  (* exceptions are captured by caller of updates *)
+  match input with
+  | `FileString input ->
+     Html.fileElt_info
+       (fun fname_contents k -> input#set fname_contents; k ())
+  | `Syntagm input ->
+      Html.string_info
+       (fun contents k -> input#set contents; k ())
+
 (* UI widgets *)
 
 class results
@@ -24,6 +34,16 @@ object
 
 let w_result =  new results 
     ~id:"lis-results"
+
+let suggestions_cols = ["col-md-4 col-xs-12";	"col-md-4 col-xs-12"]
+
+let w_suggestions : Grammar_suggestions.suggestion Widget_suggestions.widget =
+  new Widget_suggestions.widget
+      ~id:"lis-suggestions"
+      ~html_of_suggestion:(fun ~input_dico sugg ->
+			   Html.syntax ~input_dico
+				       ~html_of_word ~html_info_of_input
+				       (Grammar_syntax.syn_transf sugg))
 			      
 let w_focus =
   new Widget_focus.widget
@@ -52,7 +72,16 @@ let render_place place k =
   place#eval
     (fun ext -> Jsutils.firebug "ext computed"; 
                 w_result#set_contents ext)
-    (fun sugg -> Jsutils.firebug "sugg computed")
+    (fun suggestions -> 
+      Jsutils.firebug "suggestions computed";
+      w_suggestions#set_suggestions suggestions_cols suggestions;
+      let suggestion_handler =
+        (fun sugg ->
+          match place#activate sugg with
+          | Some p -> k ~push_in_history:true p
+          | None -> assert false) in
+      w_suggestions#on_suggestion_selection suggestion_handler)
+
 
 let handle_document_keydown ev place k =
   let open Js_of_ocaml in
@@ -88,16 +117,3 @@ let _ =
     ~render_place
     ~handle_document_keydown
     ~error_message;
-    (*
-    jquery "#button-open-data" (onclick (fun elt ev -> jquery_click "#data-open"; true));
-    jquery_input
-	    "#data-open"
-	   (onchange (fun input ev ->
-		    Jsutils.file_string_of_input
-		      input
-		      (fun (filename,contents) ->
-		       let json = Yojson.Safe.from_string contents in
-		       hist#open_place json;
-		       refresh ())));
-*)
-

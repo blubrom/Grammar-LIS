@@ -91,6 +91,35 @@ let earley (init_func: int -> (item list)) (g: grammar) (w: token array) : (item
 let get_fully_parsed (t: (item list) array) : (item list) array = let n = Array.length t in 
     Array.init n (fun i -> (List.filter (fun it -> match it with | Item(_, (_, []), _, _) -> true | _ -> false ) t.(i))) 
 
+open Grammar_focus
+
+class words = 
+object (s)
+    val mutable w : word_list = 
+        [
+        [| "b" ; "a" ; "+" ; "(" ; "a" ; "*" ; "a"; ")"; "w"|];
+        [| "a" ; "+" ; "a"|];
+        [| "b"; "-" ; "(" ; "a" ; "/" ; "a" ; "+" ; "a" ; ")" |]
+        ]
+
+    method get = w
+
+    method add word = w <- word :: w 
+
+    method set w' = w <- w'
+
+    method remove word = List.filter (fun w' -> w' <> word) w
+
+    method clear = w <- []
+
+    method of_yojson y = try (match word_list_of_yojson y with 
+                                | Result.Ok(w) -> s#set w 
+                                | _ -> failwith "Invalid serialization of words") with 
+                        Failure s -> Jsutils.firebug s;
+    method to_yojson = word_list_to_yojson w 
+end
+
+let w = new words 
 
 (* TEST *)
 (*

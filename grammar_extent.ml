@@ -57,55 +57,74 @@ let rec tree_of_item (t: (Parsing.item list) array) (i:int) (it:Parsing.item) : 
                                         (Node(s, l), (k,i))
                                     | _ -> failwith "shouldn't happen, we only use the fully parsed items"
 
-let get_tree (t: (Parsing.item list) array) (i: int)  : (derivation_tree * (int*int)) option = 
+let get_tree (t: (Parsing.item list) array) (i: int) (axiom:syntagm) : (derivation_tree * (int*int)) option = 
     if List.length t.(i) = 0 then None else (* we are sure we will calculate at leat one tree because there is at least one item in l *)
         let l = (List.map (tree_of_item t i) t.(i)) in 
-        List.fold_left (* get the biggest tree, i.e. the one that begins the earliest and wich isn't a subtree of any other tree in l *)
+        let stratingTree = Some(Node(axiom, []), (i,i)) in 
+        let t = List.fold_left (* get the biggest tree, i.e. the one that begins the earliest and wich isn't a subtree of any other tree in l *)
             (fun accu c -> match accu, c with 
-                            | Some(b_tree, (k_min,_)), (curr_tree, (k,_)) -> if (k < k_min) || (k=k_min && not (subtree b_tree curr_tree)) then Some(c) else accu
+                            | Some(b_tree, (k_min,_)), (curr_tree, (k,_)) -> 
+                                begin match curr_tree with 
+                                    | Node(s, sons) when s = axiom -> if (k < k_min) || (k=k_min && not (subtree b_tree curr_tree)) then Some(c) else accu
+                                    | _ -> accu
+                                end
                             | _ -> failwith "accu should alway's be non empty" 
             ) 
-            (Some(List.hd l))
-            (List.tl l)
-            
+            (stratingTree)
+            (l) in 
+        if t = stratingTree then None else t
 
 (** t only contains the fully parsed items, i.e. those where the list context is empty on the right *)
 (* returns all of the trees that were used in the parsing the int*int gives the starting and ending position of the pattern *)
-let get_derivations (t : (Parsing.item list) array) : (derivation_tree * (int*int)) list  = let n = Array.length t in 
+let get_derivations (t : (Parsing.item list) array) (axiom: syntagm) : (derivation_tree * (int*int)) list  = let n = Array.length t in 
     let derivations_list = ref [] in let i = ref (n-1) in 
     while !i > 0 do 
-        let ht = get_tree t !i 
+        let ht = get_tree t !i axiom
         in match ht with
             | Some(c,(k,_)) -> derivations_list:= (c, (k,!i))::!derivations_list; i := (k-1) 
             | None -> decr i
     done;
     !derivations_list
 
-let get_derivations_of_earley t = let t'= Parsing.get_fully_parsed t in get_derivations t'
+let get_derivations_of_earley t axiom = let t'= Parsing.get_fully_parsed t in get_derivations t' axiom
 
 let rec derivations_of_focus (w : token array) (f: Grammar_focus.focus) : ((derivation_tree * (int*int)) list) = match f with 
-    | GrammarFocus(g, ctx) -> let g' = Grammar_focus.grammar_of_focus f in
-                              get_derivations_of_earley (Parsing.earley (Parsing.init_earley g') g' w)  (* simplement lancer earley  *)
-   
-    | RulesFocus(r,ctx) -> let Grammar(_,rl) = Grammar_focus.grammar_of_focus f in 
-                           let s = match r with 
-                            | Rules(s,_) -> s
-                            in let g = Grammar(s,rl) in 
-                            get_derivations_of_earley (Parsing.earley (Parsing.init_earley g) g w) (* lancer earley en ayant mis comme axiome le syntagme de r *)
+    | {grammar_focus} -> begin match grammar_focus with 
+        | GrammarFocus(g, ctx) -> let g' = Grammar_focus.grammar_of_focus f in
+                                  let s = match g' with | Grammar(s,_) -> s in 
+                                get_derivations_of_earley (Parsing.earley (Parsing.init_earley g') g' w) s(* simplement lancer earley  *)
     
-    | ProductionFocus(p, ctx) -> let g =  Grammar_focus.grammar_of_focus f in 
-                                 let s = match ctx with | Rules2X(s, _, _) -> s in
-                            get_derivations_of_earley (Parsing.earley (Parsing.init_earley_production s p) g w)(* lancer earley avec une initialisation modifiée qui ne met que la règle s->p dans le tableau*)
-   
-    | SyntagmFocus(s, ctx) -> begin match Grammar_focus.focus_up f with  (* se rammener au cas grammar ou rules *)
-                                | Some (f,_) -> derivations_of_focus w f
-                                | None -> failwith "there should always be a focus rechable upwards from a syntagm"
-                             end
-    | SymbolFocus(s, ctx) -> begin match Grammar_focus.focus_up f with 
-                                | Some (f,_) -> derivations_of_focus w f
-                                | None -> failwith "there should always be a focus rechable upwards from a symbol"
-                             end
-                                 (* se ramener au cas production mais en plus on voudra surligner le symbole dans les blocs reconnus*)
+        | RulesFocus(r,ctx) -> let Grammar(_,rl) = Grammar_focus.grammar_of_focus f in 
+                            let s = match r with 
+                                | Rules(s,_) -> s
+                                in let g = Grammar(s,rl) in 
+                                get_derivations_of_earley (Parsing.earley (Parsing.init_earley g) g w) s(* lancer earley en ayant mis comme axiome le syntagme de r *)
+        
+        | ProductionFocus(p, ctx) -> let Grammar(_, rl) =  Grammar_focus.grammar_of_focus f in 
+                                    (* on veut avoir un syntagme différent de tous ceux présents dans la grammaire
+                                        un moyen simple d'être certain que notre syntagme n'appartient pas à la grammaire et d'utiliser
+                                        la concaténation de tous les syntagmes présents dans la grammaire *)
+                                    let s = List.fold_left (fun accu r -> match r with | Rules(s',_) -> accu ^ s' ) "" rl in 
+                                    let g = Grammar(s, Rules(s, [p])::rl) in 
+                                    let p_syntagm = match ctx with | Rules2X(s', _, _) -> s' in 
+                                    (* on remet le bon syntagme comme parent, le syntagme qu'on a définit avant 
+                                    était temporaire et servait à éviter les probèmes liés à des règles réccursives à gauche*)
+                                    List.map (fun (t,i_j) -> 
+                                        match t with 
+                                            | Node(_, sons) -> Node(p_syntagm, sons), i_j 
+                                            | _ -> failwith "There should never be a leaf in the derivation trees we've obtained") 
+                                        (get_derivations_of_earley (Parsing.earley (Parsing.init_earley g) g w) s)(* lancer earley avec une initialisation modifiée qui ne met que la règle s->p dans le tableau*)
+    
+        | SyntagmFocus(s, ctx) -> begin match Grammar_focus.focus_up f with  (* se rammener au cas grammar ou rules *)
+                                    | Some (f,_) -> derivations_of_focus w f
+                                    | None -> failwith "there should always be a focus rechable upwards from a syntagm"
+                                end
+        | SymbolFocus(s, ctx) -> begin match Grammar_focus.focus_up f with 
+                                    | Some (f,_) -> derivations_of_focus w f
+                                    | None -> failwith "there should always be a focus rechable upwards from a symbol"
+                                end
+                                    (* se ramener au cas production mais en plus on voudra surligner le symbole dans les blocs reconnus*)
+    end
 
 
 let compute_extent_word w f : extent_word = 
@@ -120,7 +139,7 @@ let compute_extent_word w f : extent_word =
     done;
     Word(List.rev (!res))
 
-let compute_extent words f : extent = Extent(List.map (fun w -> compute_extent_word w f) words)  
+let compute_extent (f:Grammar_focus.focus) : extent = match f with {data} -> Extent(List.map (fun w -> compute_extent_word w f) data)  
 
 (* Tests *)
 (*
