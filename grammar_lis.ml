@@ -2,7 +2,6 @@
 module Focus = Grammar_focus
 module Extension = Grammar_extent
 module Suggestions = Grammar_suggestions 
-module Semantics = Grammar_semantics
 		       
 class place (lis : lis) (focus : Focus.focus) =
 object
