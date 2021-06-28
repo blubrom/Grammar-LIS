@@ -213,9 +213,9 @@ let initial_select = "Choose syntagm"
 let in_data (s:string) (d : word_list) = List.exists (fun w -> Array.exists (fun t -> t = s) w ) d 
 
 
-let rec change_syntagm (f:grammar_focus) (s:syntagm) : grammar_focus = Jsutils.firebug ("s = "^s);match f with
+let rec change_syntagm (f:grammar_focus) (s:syntagm) : grammar_focus = match f with
   | GrammarFocus(g, ctx) -> begin match g with | Grammar(_,rl) -> GrammarFocus(Grammar(s,rl),ctx) end
-  | RulesFocus(r, ctx) -> Jsutils.firebug "je ne comprends pas";
+  | RulesFocus(r, ctx) -> 
     begin match r with Rules(_,pl) ->
       begin match ctx with 
         | Grammar2X(s',ll_rr, ctx') -> 
@@ -230,7 +230,7 @@ let rec change_syntagm (f:grammar_focus) (s:syntagm) : grammar_focus = Jsutils.f
             | _ -> f 
       end
     end
-  | ProductionFocus(p, ctx) -> Jsutils.firebug "alors peut-être";
+  | ProductionFocus(p, ctx) -> 
     let newctx =  match ctx with 
       | Rules2X(s', (ll_rr), ctx') when s' <> s -> 
         begin match ctx' with 
@@ -248,7 +248,7 @@ let rec change_syntagm (f:grammar_focus) (s:syntagm) : grammar_focus = Jsutils.f
         end
       | _ -> ctx
     in ProductionFocus(p,newctx)
-  | SyntagmFocus(s', ctx) -> Jsutils.firebug "gné ?";
+  | SyntagmFocus(s', ctx) ->
     begin match ctx with 
       | Grammar1(ctx',rl) -> SyntagmFocus(s,ctx) 
       | Rules1(ctx', pl) -> 
@@ -260,7 +260,7 @@ let rec change_syntagm (f:grammar_focus) (s:syntagm) : grammar_focus = Jsutils.f
   | _ -> assert false 
 
 and put_in_variable f syn syn' = match f with 
-    | ProductionFocus(p, ctx) -> Jsutils.firebug "ici ?";
+    | ProductionFocus(p, ctx) -> 
           begin try 
             begin match ctx with 
               | Rules2X(s', (ll,rr), ctx') -> 
@@ -304,6 +304,18 @@ and put_in_variable f syn syn' = match f with
           end
       with | Failure msg -> Jsutils.firebug msg; f end
     | _ -> assert false
+
+and get_symbol s syn data =              
+  if syn <> initial_select then 
+    Var(syn)
+  else if s <> "" then 
+    let token = in_data s data
+    in  
+      if token then 
+        begin Jsutils.firebug "token"; Item(s) end
+      else 
+        begin Jsutils.firebug "syntagm"; Var(s) end
+  else failwith "no selection"
 
 and apply_transf (transf : transf) (foc : focus) : focus option =
   match foc with {grammar_focus;data} -> begin 
@@ -363,47 +375,38 @@ and apply_transf (transf : transf) (foc : focus) : focus option =
                                     end
           | _ -> assert false 
         in Some({grammar_focus=new_gf;data})
+
       | InsertSymbolBefore ((_, in_select), in_string) -> 
          let syn = in_select#get in 
           let s = in_string#get in 
           let newgf = match grammar_focus with 
-            | SymbolFocus(s', ctx) -> 
-            if syn <> initial_select then 
-              match ctx with | ProductionX((ll,rr), ctx') -> SymbolFocus(Var(syn), ProductionX((s'::ll, rr), ctx'))
-            else if s <> "" then 
-              begin match ctx with | ProductionX((ll,rr), ctx') -> 
-                let Grammar(_, rl) = grammar_of_focus foc in (* vérifier si un non terminal correspond au string entré  *)
-                let token = in_data s data
-                in 
-                if token then 
-                  begin Jsutils.firebug "token"; SymbolFocus(Item(s), ProductionX((ll, s'::rr), ctx')) end
-                else 
-                  begin Jsutils.firebug "syntagm"; SymbolFocus(Var(s), ProductionX((ll, s'::rr), ctx')) end
-              end
-            else 
-              grammar_focus
-            | ProductionFocus(p, ctx) -> failwith "TODO"
+            | SymbolFocus(s', ProductionX((ll,rr), ctx')) -> 
+              begin try 
+                let sym = get_symbol syn s data in 
+                SymbolFocus(sym, ProductionX((ll, s'::rr), ctx')) 
+              with Failure msg -> Jsutils.firebug msg; grammar_focus end
+            | ProductionFocus(Production(sl), ctx) -> 
+              begin try 
+                let sym = get_symbol syn s data in 
+                SymbolFocus(sym, ProductionX(([], sl), ctx)) 
+              with Failure msg -> Jsutils.firebug msg; grammar_focus end
             | _ -> assert false 
           in Some({grammar_focus=newgf;data})
+
       | InsertSymbolAfter ((_,in_select), in_string) -> 
           let syn = in_select#get in 
           let s = in_string#get in 
-          let newgf = match grammar_focus with | SymbolFocus(s', ctx) -> 
-            if syn <> initial_select then 
-              match ctx with | ProductionX((ll,rr), ctx') -> SymbolFocus(Var(syn), ProductionX((s'::ll, rr), ctx'))
-            else if s <> "" then 
-              begin match ctx with | ProductionX((ll,rr), ctx') -> 
-                let Grammar(_, rl) = grammar_of_focus foc in (* vérifier si un non terminal correspond au string entré  *)
-                let token = in_data s data
-                in 
-                if token then 
-                  begin Jsutils.firebug "token"; SymbolFocus(Item(s), ProductionX((s'::ll, rr), ctx')) end
-                else 
-                  begin Jsutils.firebug "syntagm"; SymbolFocus(Var(s), ProductionX((s'::ll, rr), ctx')) end
-              end
-            else 
-              grammar_focus
-            | ProductionFocus(p, ctx) -> failwith "TODO" 
+          let newgf = match grammar_focus with 
+            | SymbolFocus(s', ProductionX((ll,rr), ctx')) -> 
+              begin try 
+                let sym = get_symbol syn s data in 
+                SymbolFocus(sym, ProductionX((s'::ll, rr), ctx')) 
+              with Failure msg -> Jsutils.firebug msg; grammar_focus end
+            | ProductionFocus(Production(sl), ctx) -> 
+              begin try 
+                let sym = get_symbol syn s data in 
+                SymbolFocus(sym, ProductionX((List.rev sl, []), ctx)) 
+              with Failure msg -> Jsutils.firebug msg; grammar_focus end
             | _ -> assert false 
           in Some({grammar_focus=newgf;data})
       | PutInVariable ((_,in_select), in_syn) -> 
@@ -423,17 +426,10 @@ and apply_transf (transf : transf) (foc : focus) : focus option =
           let s = in_string#get in 
           let newgf = match grammar_focus with 
             | SymbolFocus(s', ctx) -> 
-              if syn <> initial_select then 
-                SymbolFocus(Var(syn), ctx)
-              else if s <> "" then 
-                  let token = in_data s data
-                  in 
-                  if token then 
-                    begin Jsutils.firebug "token"; SymbolFocus(Item(s), ctx) end
-                  else 
-                    begin Jsutils.firebug "syntagm"; SymbolFocus(Var(s), ctx) end
-              else 
-                grammar_focus
+              begin try 
+                let sym = get_symbol syn s data in 
+                SymbolFocus(sym, ctx) 
+              with Failure msg -> Jsutils.firebug msg; grammar_focus end
             | _ -> assert false 
           in Some({grammar_focus=newgf;data})
   end
