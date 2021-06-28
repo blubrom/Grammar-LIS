@@ -6,6 +6,10 @@ open Grammar_focus
 type word = [ `Var of Grammar.syntagm 
             | `Token of Grammar.token ]
 type input = [ `FileString of (string * string) Focus.input
+              | `Separator of string Focus.input
+              | `Word of string Focus.input
+              | `SelectSyntagm of syntagm list * (syntagm Focus.input)
+              | `Symbol of string Focus.input 
               | `Syntagm of syntagm Focus.input ]
 
 type syn = (word,input,focus) xml
@@ -172,10 +176,19 @@ let syn_transf : transf -> syn = function
     | FocusUp -> [Kwd "(focus up)"]
     | FocusRight -> [Kwd "(focus right)"]
     | Delete -> [Kwd "(delete focus)"]
-    | InputFileString i -> [Kwd "insert"; Kwd "words"; Kwd "to"; Kwd "parse"; Input (`FileString i)]
+    | ClearGrammar -> [Kwd "Clear"; Kwd "Grammar"]
+    | SetWords (ifile, istr) -> [Kwd "Set"; Kwd "words"; Input(`FileString ifile); Kwd "separator"; Kwd " : "; Input(`Separator istr)]
+    | AddWords (ifile, istr) -> [Kwd "add"; Kwd "words"; Input(`FileString ifile); Kwd "separator"; Kwd " : "; Input(`Separator istr)]
+    | InputWordSeparator (istr, isep) -> [Kwd "add"; Kwd "words"; Input(`Word istr); Kwd "separator"; Kwd " : "; Input(`Separator isep)]
+    | ClearWords -> [Kwd "Clear"; Kwd "words"]
     | InsertRule i -> [Kwd "insert"; Kwd "a"; Kwd "new"; Kwd "non"; Kwd "terminal"; Input(`Syntagm i)]
-    | InsertProduction -> [Kwd "(insert production)"]
-    | InsertSymbol -> [Kwd "(insert symbol)"]
+    | ChangeSyntagm i -> [Kwd "change"; Kwd "syntagm"; Kwd " : "; Input(`SelectSyntagm i)]
+    | InsertProduction -> [Kwd "insert"; Kwd "a"; Kwd "production"]
+    | InsertSymbol (iselect, isymbol) -> [Kwd "insert"; Kwd "symbol"; Input(`SelectSyntagm iselect) ; Kwd "or"; Input(`Symbol isymbol)]
+    | PutInVariable (iselect, isyn) -> [Kwd "move"; Kwd "current"; Kwd "focus"; Kwd "to"; Kwd "syntagm"; Input(`SelectSyntagm iselect); Kwd "or"; Input(`Syntagm isyn)]
+    | Copy -> [Kwd "copy"; Kwd "current"; Kwd "focus"]
+    | SetSymbol (iselect, isymbol) -> [Kwd "change"; Kwd "current"; Kwd"focus"; Kwd "to"; Input(`SelectSyntagm iselect); Kwd "or"; Input(`Syntagm isymbol)]
+
 
 
 

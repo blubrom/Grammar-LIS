@@ -36,8 +36,9 @@ let contains (l: item list) (v:syntagm) (step:int) : bool = List.fold_left (fun 
 *)
 
 let predict_step (i:int) (g:grammar) (accu: item list) (it: item) : item list =  match g, it with 
-    | Grammar(_,rl), Item(_, (_, Var(s)::tl), _, _) -> let r = List.find (fun r' -> match r' with | Rules(s',_) when s'=s -> true | _ -> false) rl in 
-                                                       List.fold_left (fun accu it -> if List.mem it accu then accu else it::accu) accu (items_of_rule i r)  
+    | Grammar(_,rl), Item(_, (_, Var(s)::tl), _, _) -> begin try let r = List.find (fun r' -> match r' with | Rules(s',_) when s'=s -> true | _ -> false) rl in 
+                                                       List.fold_left (fun accu it -> if List.mem it accu then accu else it::accu) accu (items_of_rule i r)
+                                                       with | Not_found -> accu end
     | _ -> accu 
 
 let predict (i: int) (tab: (item list) array) (g:grammar) : (item list) array = let cond = ref false in
@@ -91,6 +92,7 @@ let earley (init_func: int -> (item list)) (g: grammar) (w: token array) : (item
 let get_fully_parsed (t: (item list) array) : (item list) array = let n = Array.length t in 
     Array.init n (fun i -> (List.filter (fun it -> match it with | Item(_, (_, []), _, _) -> true | _ -> false ) t.(i))) 
 
+(*
 open Grammar_focus
 
 class words = 
@@ -120,7 +122,7 @@ object (s)
 end
 
 let w = new words 
-
+*)
 (* TEST *)
 (*
 let g = Grammar("S", [Rules("S", [Production([Var("E")])]); 

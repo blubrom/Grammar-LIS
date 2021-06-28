@@ -12,12 +12,13 @@ let html_of_word : Grammar_syntax.word -> Html.t = function
 let html_info_of_input (input : Grammar_syntax.input) : Html.input_info =
   (* exceptions are captured by caller of updates *)
   match input with
-  | `FileString input ->
-     Html.fileElt_info
-       (fun fname_contents k -> input#set fname_contents; k ())
-  | `Syntagm input ->
-      Html.string_info
-       (fun contents k -> input#set contents; k ())
+  | `FileString input -> Html.fileElt_info (fun fname_contents k -> input#set fname_contents; k ())
+  | `Separator input -> Html.string_info (fun contents k -> input#set contents; k ())
+  | `Word input -> Html.string_info (fun contents k -> input#set contents; k ())
+  | `SelectSyntagm (syntagms, input) -> Html.selectElt_info syntagms (fun x k -> input#set x; k ()) 
+  | `Symbol input -> Html.string_info (fun contents k -> input#set contents; k ())
+  | `Syntagm input -> Html.string_info (fun contents k -> input#set contents; k ())
+
 
 (* UI widgets *)
 
@@ -35,7 +36,7 @@ object
 let w_result =  new results 
     ~id:"lis-results"
 
-let suggestions_cols = ["col-md-4 col-xs-12";	"col-md-4 col-xs-12"]
+let suggestions_cols = ["col-md-4 col-xs-12";	"col-md-4 col-xs-12"; "col-md-4 col-xs-12"]
 
 let w_suggestions : Grammar_suggestions.suggestion Widget_suggestions.widget =
   new Widget_suggestions.widget

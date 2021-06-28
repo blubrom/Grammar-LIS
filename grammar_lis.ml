@@ -18,7 +18,11 @@ object
       let lfsugg = Suggestions.suggestions focus in
       k_suggestions lfsugg
 
-  method activate sugg = None
+  method activate sugg = 
+    let transf = sugg in
+    match Focus.apply_transf transf focus with
+    | Some new_focus -> Some (new place lis new_focus)
+    | None -> None
 
   method abort = ()
 

@@ -5,7 +5,7 @@ GRAMMAR=grammar.cmo grammar_focus.cmo parsing.cmo grammar_extent.cmo grammar_syn
 FLAGS= -package yojson,ppx_deriving_yojson,csv,js_of_ocaml,js_of_ocaml-ppx -I ../fablis/core -I ../fablis/core/webapp
 
 all: $(GRAMMAR) grammar_webapp.ml
-	ocamlfind ocamlc $(FLAGS) -package js_of_ocaml,js_of_ocaml-lwt -linkpkg -o html/script.byte $(CORE) $(WEBAPP) $(GRAMMAR) grammar_webapp.ml
+	ocamlfind ocamlc str.cma $(FLAGS) -package js_of_ocaml,js_of_ocaml-lwt -linkpkg -o html/script.byte $(CORE) $(WEBAPP) $(GRAMMAR) grammar_webapp.ml
 	js_of_ocaml html/script.byte
 
 clean:

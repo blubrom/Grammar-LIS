@@ -187,18 +187,228 @@ type transf =
   | FocusUp
   | FocusRight
   | Delete
-  | InputFileString of (string * string) input
+  | ClearGrammar
+  | SetWords of ((string * string) input * (string input))
+  | AddWords of ((string * string) input * (string input))
+  | InputWordSeparator of (string input * (string input))
+  | ClearWords
   | InsertRule of syntagm input
+  | ChangeSyntagm of (syntagm list *(syntagm input))
   | InsertProduction
-  | InsertSymbol
+  | InsertSymbol of (syntagm list *(syntagm input)) * (string input)
+  | PutInVariable of (syntagm list *(syntagm input)) * (syntagm input )
+  | Copy 
+  | SetSymbol of (syntagm list *(syntagm input)) * string input
 
-let rec apply_transf (transf : transf) (foc : focus) : focus option =
-  match transf with
-  | FocusUp -> Option.map fst (focus_up foc)
-  | FocusRight -> focus_right foc
-  | Delete -> delete foc
-  | InputFileString(input) -> 
-     (*let filename, contents = input#get in ;*) Some(foc)
-  | InsertRule(input) -> Some(foc)
-  | InsertProduction -> Some(foc)
-  | InsertSymbol -> Some(foc)
+let word_of_string (s:string) (sep:string) : Grammar.token array = 
+  Array.of_list (Str.split (Str.regexp sep) s)
+
+let words_of_file (contents:string) (sep:string) : word_list = 
+  let sl = Str.split (Str.regexp_string "\n") contents in 
+  List.map (fun s -> word_of_string s sep) sl 
+
+let initial_select = "Choisissez un syntagme"
+
+
+let rec change_syntagm (f:grammar_focus) (s:syntagm) : grammar_focus = Jsutils.firebug ("s = "^s);match f with
+  | GrammarFocus(g, ctx) -> begin match g with | Grammar(_,rl) -> GrammarFocus(Grammar(s,rl),ctx) end
+  | RulesFocus(r, ctx) -> Jsutils.firebug "je ne comprends pas";
+    begin match r with Rules(_,pl) ->
+      begin match ctx with 
+        | Grammar2X(s',ll_rr, ctx') -> 
+          match List.fold_left 
+            (fun accu r' -> 
+              match accu,r' with 
+                | (ll,None,rr), Rules(s'', pl') when s'' = s -> (ll,Some(Rules(s,pl@pl')),rr)
+                | (ll,None, rr), _ -> (r'::ll, None, rr)
+                | (ll, Some(r''), rr), _ -> (ll, Some(r''), r'::rr)) 
+            ([],None,[]) (Focus.list_of_ctx_none ll_rr) with 
+            | (ll, Some(r'), rr) -> RulesFocus(r', Grammar2X(s', (ll,rr), ctx'))
+            | _ -> f 
+      end
+    end
+  | ProductionFocus(p, ctx) -> Jsutils.firebug "alors peut-être";
+    let newctx =  match ctx with 
+      | Rules2X(s', (ll_rr), ctx') when s' <> s -> 
+        begin match ctx' with 
+          | Grammar2X(axiom, ll_rr', ctx'') -> 
+            let r, newctx' =  match 
+            List.fold_left 
+            (fun accu r -> match accu, r with 
+              | (ll, None, rr) , Rules(s'', pl) when s'' = s -> (ll, Some(Rules(s'', pl)), rr)
+              | (ll, None, rr), _ -> (r::ll, None, rr)
+              | (ll, Some(r'), rr), _ -> (ll, Some(r'), r::rr) ) 
+            ([],None, []) (Focus.list_of_ctx (Rules(s', Focus.list_of_ctx_none ll_rr)) ll_rr') with 
+            | (ll, Some(r), rr) -> r, Grammar2X(axiom, (ll,rr), ctx'') 
+            | _ -> assert false 
+            in match r with Rules(_, pl) ->  Rules2X(s, ([],pl), newctx')
+        end
+      | _ -> ctx
+    in ProductionFocus(p,newctx)
+  | SyntagmFocus(s', ctx) -> Jsutils.firebug "gné ?";
+    begin match ctx with 
+      | Grammar1(ctx',rl) -> SyntagmFocus(s,ctx) 
+      | Rules1(ctx', pl) -> 
+        begin match change_syntagm (RulesFocus(Rules(s', pl), ctx')) s with 
+          | RulesFocus(Rules(_, pl'), ctx'') -> SyntagmFocus(s, Rules1(ctx'', pl'))
+          | _ -> assert false  
+        end
+    end
+  | _ -> assert false 
+
+and put_in_variable f syn syn' = match f with 
+    | ProductionFocus(p, ctx) -> Jsutils.firebug "ici ?";
+          begin try 
+            begin match ctx with 
+              | Rules2X(s', (ll,rr), ctx') -> 
+              let s, nctx' = 
+              if syn <> initial_select then syn, ctx' 
+              else if syn' <> "" then 
+                if syn' = s' then s', ctx'
+                else match ctx' with | Grammar2X(axiom, (ll',rr'), ctx'') ->
+                  match List.find_opt (fun r -> match r with | Rules(s'',_) when s'' = syn' -> true | _  -> false) (Focus.list_of_ctx_none (ll',rr')) with 
+                    | Some(_) -> syn', ctx' 
+                    | None -> syn', Grammar2X(axiom, (ll',Rules(syn', [])::rr'), ctx'') (* le syntagme n'existait pas donc on l'ajoute *)
+              else failwith "no selection made" in  
+              change_syntagm (ProductionFocus(p,(Rules2X(s', (Production([Var(s)])::ll, rr), nctx')))) s
+            end
+          with | Failure msg -> Jsutils.firebug msg; f end
+    | SymbolFocus(s, ctx) -> Jsutils.firebug "là ?";
+      begin try 
+        let syn'', nctx = 
+        if syn <> initial_select then 
+          syn, ctx
+        else if syn' <> "" then 
+          match ctx with | ProductionX((ll,rr), ctx') -> 
+            begin match ctx' with 
+              | Rules2X(s', ll_rr', ctx'') when s' <> syn' -> 
+                begin match ctx'' with 
+                  | Grammar2X(axiom, (ll'',rr''), ctx''') -> 
+                    match List.find_opt (fun r -> match r with | Rules(s'',_) when s'' = syn' -> true | _  -> false) (Focus.list_of_ctx_none (ll'',rr'')) with 
+                     | Some(_) -> syn', ctx 
+                     | None -> syn', ProductionX((ll,rr), Rules2X(s', ll_rr', Grammar2X(axiom, (ll'',Rules(syn', [])::rr''), ctx'''))) (* le syntagme n'existait pas donc on l'ajoute *)
+                end
+              | _ -> syn', ctx 
+            end
+        else 
+          failwith "no selection"
+        in 
+        match nctx with | ProductionX((ll,rr), ctx') -> 
+          begin match ctx' with 
+            | Rules2X(s', (ll',rr'), ctx'') -> 
+              let new_foc = change_syntagm (ProductionFocus(Production([s]), Rules2X(s', (Production(Focus.list_of_ctx (Var(syn'')) (ll,rr))::ll', rr'), ctx''))) syn''
+              in match focus_down {grammar_focus = new_foc; data = []} with | Some({grammar_focus}) -> grammar_focus | _ -> failwith "failure"
+          end
+      with | Failure msg -> Jsutils.firebug msg; f end
+    | _ -> assert false
+
+and apply_transf (transf : transf) (foc : focus) : focus option =
+  match foc with {grammar_focus;data} -> begin 
+    match transf with
+      | FocusUp -> Option.map fst (focus_up foc)
+      | FocusRight -> focus_right foc
+      | Delete -> delete foc
+      | ClearGrammar -> Some({grammar_focus = GrammarFocus(Grammar.initial_grammar, Root); data})
+      | SetWords (in_file, in_sep) -> 
+        let fname, contents = (in_file#get) in 
+        let words = words_of_file contents (in_sep#get) in Some({grammar_focus; data = words})
+      | AddWords (in_file, in_sep) -> 
+        let fname, contents = (in_file#get) in 
+        let words = words_of_file contents (in_sep#get) in Some({grammar_focus; data = data@words})
+      | InputWordSeparator (in_word, in_sep )-> 
+        let word = word_of_string (in_word#get) (in_sep#get) in Some({grammar_focus; data = word::data})
+      | ClearWords -> Some({grammar_focus; data=initial_words})
+      | InsertRule in_syn ->  
+        let syn = (in_syn#get) in 
+        let Grammar(_, rl) = grammar_of_focus foc in 
+        begin match List.find_opt (fun r -> match r with | Rules(s, _) when s = syn -> true | _ -> false ) rl with 
+          | Some(_) -> Some(foc) (* rien  faire, la règle existe déjà *) 
+          | None -> 
+            begin let new_gf = match grammar_focus with 
+              | GrammarFocus(g, ctx) -> begin match g with | Grammar(s,rl') -> RulesFocus(Rules(syn,[Production([])]), Grammar2X(s, (rl', []), ctx)) end
+              | RulesFocus(r, ctx)-> begin match ctx with | Grammar2X(s,(ll,rr),ctx') -> RulesFocus(Rules(syn, [Production([])]), Grammar2X(s, (r::ll, rr), ctx')) end  
+              | SyntagmFocus(s, ctx) -> 
+                begin match ctx with 
+                  | Grammar1(ctx', rl') -> RulesFocus(Rules(syn,[Production([])]), Grammar2X(s, (rl', []), ctx')) 
+                  | Rules1(ctx', pl) -> 
+                    begin match ctx' with 
+                      | Grammar2X(axiom, (ll,rr), ctx'') -> RulesFocus(Rules(syn, [Production([])]), Grammar2X(axiom, (Focus.list_of_ctx (Rules(s, pl)) (ll,rr),[]), ctx''))
+                    end 
+                end 
+              | _ -> assert false 
+            in Some({grammar_focus=new_gf;data})
+            end
+        end
+      | ChangeSyntagm (_, in_select) -> 
+        let s = in_select#get in 
+        if s = initial_select then Some(foc) 
+        else 
+          let newgf = change_syntagm grammar_focus s 
+          in Some({grammar_focus=newgf;data})
+
+      | InsertProduction -> 
+        let new_gf = match grammar_focus with 
+          | ProductionFocus(p,ctx)-> begin match ctx with | Rules2X(s, (ll,rr), ctx') -> ProductionFocus(Production([]), Rules2X(s, (p::ll, rr), ctx')) end
+          | RulesFocus(r, ctx) -> begin match r with Rules(s, rl) -> RulesFocus(Rules(s, Production([])::rl), ctx) end
+          | SyntagmFocus(s, ctx) -> begin match ctx with | Rules1(ctx', pl) -> SyntagmFocus(s, Rules1(ctx', Production([])::pl))
+                                                        | Grammar1(ctx', rl) ->
+                                                            let nrl = List.map 
+                                                              (fun r -> match r with 
+                                                                |Rules(s', pl) when s' = s -> Rules(s', Production([])::pl)
+                                                                | _ -> r ) rl 
+                                                            in SyntagmFocus(s, Grammar1(ctx', nrl))
+                                    end
+          | _ -> assert false 
+        in Some({grammar_focus=new_gf;data})
+      | InsertSymbol ((_,in_select), in_string) -> 
+          let syn = in_select#get in 
+          let s = in_string#get in 
+          let newgf = match grammar_focus with | SymbolFocus(s', ctx) -> 
+            if syn <> initial_select then 
+              match ctx with | ProductionX((ll,rr), ctx') -> SymbolFocus(Var(syn), ProductionX((s'::ll, rr), ctx'))
+            else if s <> "" then 
+              match ctx with | ProductionX((ll,rr), ctx') -> 
+                let Grammar(_, rl) = grammar_of_focus foc in (* vérifier si un non terminal correspond au string entré  *)
+                let var = match List.find_opt (fun r -> match r with | Rules(s'', _) when s'' = s -> true | _ -> false) rl with | Some(_) ->true | _ -> false
+                in 
+                if var then 
+                  SymbolFocus(Var(s), ProductionX((s'::ll, rr), ctx'))
+                else 
+                  SymbolFocus(Item(s), ProductionX((s'::ll, rr), ctx'))
+            else 
+              grammar_focus
+            | _ -> assert false 
+          in Some({grammar_focus=newgf;data})
+      | PutInVariable ((_,in_select), in_syn) -> 
+          let syn = in_select#get in 
+          let syn' = in_syn#get in 
+          let newgf = put_in_variable grammar_focus syn syn' in 
+          Some({grammar_focus=newgf;data})
+      | Copy -> 
+        let newgf = 
+        begin match grammar_focus with 
+          | ProductionFocus(p,ctx) -> begin match ctx with Rules2X(s, (ll,rr), ctx') -> ProductionFocus(p, Rules2X(s, (p::ll, rr), ctx')) end
+          | _ -> assert false 
+        end 
+        in Some({grammar_focus=newgf; data})
+      | SetSymbol ((_,in_select), in_string) ->           
+          let syn = in_select#get in 
+          let s = in_string#get in 
+          let newgf = match grammar_focus with 
+            | SymbolFocus(s', ctx) -> 
+              if syn <> initial_select then 
+                SymbolFocus(Var(syn), ctx)
+              else if s <> "" then 
+                match ctx with | ProductionX((ll,rr), ctx') -> 
+                  let Grammar(_, rl) = grammar_of_focus foc in (* vérifier si un non terminal correspond au string entré  *)
+                  let var = match List.find_opt (fun r -> match r with | Rules(s'', _) when s'' = s -> true | _ -> false) rl with | Some(_) -> true | _ -> false
+                  in 
+                  if var then 
+                    SymbolFocus(Var(s), ctx)
+                  else 
+                    SymbolFocus(Item(s), ctx)
+              else 
+                grammar_focus
+            | _ -> assert false 
+          in Some({grammar_focus=newgf;data})
+  end
