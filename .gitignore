@@ -28,6 +28,3 @@ setup.log
 # Local OPAM switch
 _opam/
 
-html/script.js
-html/*.png 
-html/*.jpg
