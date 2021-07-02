@@ -18,7 +18,10 @@ let grammar_of_yojson : Yojson.Safe.t -> (grammar,string) Result.result =
   | _ -> Error "Invalid serialization of item"
 *)
 
-let initial_grammar = Grammar("S", [Rules("S", [Production([Var("E")])]); 
+let initial_grammar = Grammar("S", [Rules("S", [Production[]])])
+
+(*
+let g4 = Grammar("S", [Rules("S", [Production([Var("E")])]); 
     Rules("E", [Production([Var("E"); Item("+"); Var("N")]); Production([Var("E"); Item("-"); Var("N")]); Production([Var("N")])]);
     Rules("N", [Production([Var("N"); Item("*"); Var("F")]); Production([Var("N"); Item("/"); Var("F")]); Production([Var("F")])]);
     Rules("F", [Production([Item("a")]); Production([Item("-"); Var("F")]); Production([Item("+"); Var("F")]); Production([Item("("); Var("E"); Item(")")])])])
@@ -43,7 +46,8 @@ let (g2:grammar) = Grammar("X", [
         Production([Var("X"); Var("X")]);
         Production([])
     ])
-]) (* par contre ambigüe *)
+]) 
+*)
 
 
 

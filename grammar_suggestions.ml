@@ -39,11 +39,11 @@ let suggestions (foc : focus) : suggestion Lis.forest list =
                              add `Modify (ChangeSyntagm((initial_select::sl, new input initial_select)))
 
           | ProductionFocus(_) -> add `Add (InsertProduction);
-                                  add `Modify (PutInVariable ((initial_select::sl, new input initial_select), new input ""));
+                                  add `Add (PutInVariable ((initial_select::sl, new input initial_select), new input ""));
                                   add `Modify (ChangeSyntagm((initial_select::sl, new input initial_select)));
                                   add `Add (Copy);
                                   add `Add (InsertSymbolBefore ((initial_select::sl, new input initial_select), new input ""));
-                                  add `Add (InsertSymbolBefore ((initial_select::sl, new input initial_select), new input ""))
+                                  add `Add (InsertSymbolAfter ((initial_select::sl, new input initial_select), new input ""))
 
           | SymbolFocus(_) -> add `Modify (SetSymbol((initial_select::sl, new input initial_select), new input ""));
                               add `Add (InsertSymbolBefore ((initial_select::sl, new input initial_select), new input ""));

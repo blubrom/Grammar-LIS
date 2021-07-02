@@ -22,8 +22,13 @@ let rec syn_list ~limit (f : 'a -> syn) (l : 'a list) : syn list =
      then [ [Kwd "..."] ]
      else f x :: syn_list ~limit:(limit-1) f r
 		      
-let syn_syntagm (ctx:syntagm_ctx) (s:syntagm) (data:word_list) : syn = [Focus({grammar_focus=SyntagmFocus(s,ctx);data}, [Word(`Var s)])]
-let syn_token (t:token) : syn =  [Word(`Token t)]
+let syn_syntagm (ctx:syntagm_ctx) (s:syntagm) (data:word_list) : syn = 
+    if s = " " then 
+        [Focus({grammar_focus=SyntagmFocus(s,ctx);data}, [Word(`Var "&blank;")])]
+    else
+        [Focus({grammar_focus=SyntagmFocus(s,ctx);data}, [Word(`Var s)])]
+
+let syn_token (t:token) : syn =  if t = " " then [Word(`Token "&blank;")] else [Word(`Token t)]
 let syn_symbol (ctx : symbol_ctx) (data:word_list) : symbol -> syn = function 
     | Item(t) -> [Focus({grammar_focus=SymbolFocus(Item(t), ctx);data}, syn_token t)] 
     | Var(v) -> [Focus({grammar_focus=SymbolFocus(Var(v), ctx);data}, [Word(`Var v)])]
@@ -34,7 +39,7 @@ let syn_production (ctx : production_ctx) (data:word_list) : production -> syn =
             if List.length sl = 0 then 
                 [Kwd "&epsilon;"]
             else
-                [Enum("", List.map 
+                [Enum(" ", List.map 
                   (fun (s, ll_rr) -> syn_symbol (ProductionX(ll_rr, ctx)) data s) 
                   (Focus.focus_list_of_list sl))]
                             
@@ -126,7 +131,7 @@ and syn_symbol_ctx (i:symbol) (ctx: symbol_ctx) (s:syn) (data:word_list) : syn =
         syn_production_ctx 
         (Production(sl))
         ctx' 
-        ([Enum("", 
+        ([Enum(" ", 
             (Syntax.xml_list_focus
                 (fun(i', ll_rr') -> syn_symbol (ProductionX(ll_rr', ctx')) data i')
                 (i, ll_rr) xml_s)
