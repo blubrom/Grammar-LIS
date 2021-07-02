@@ -81,7 +81,7 @@ let get_derivations (t : (Parsing.item list) array) (axiom: syntagm) : (derivati
     while !i > 0 do 
         let ht = get_tree t !i axiom
         in match ht with
-            | Some(c,(k,_)) -> derivations_list:= (c, (k,!i))::!derivations_list; i := (k-1) 
+            | Some(c,(k,_)) -> derivations_list:= (c, (k,!i))::!derivations_list; i := k 
             | None -> decr i
     done;
     !derivations_list
