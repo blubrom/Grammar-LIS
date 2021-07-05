@@ -22,7 +22,7 @@ and sons_included ?(started=false) (bsons: derivation_tree list) (asons: derivat
 *)
 
 (* returns true iff a is a subtree of b*)
-let rec subtree (b:derivation_tree) (a:derivation_tree) : bool = 
+let rec subtree (b:derivation_tree) (a:derivation_tree) : bool =
     if a = b then true 
     else match b with 
         | Node(_, l) -> List.fold_left (fun accu t -> accu || (subtree t a)) false l 
@@ -32,32 +32,32 @@ let rec subtree (b:derivation_tree) (a:derivation_tree) : bool =
 let subtree_l (l:derivation_tree list) (a:derivation_tree) : bool = List.fold_left (fun accu t -> accu || (subtree t a)) false l
 
 (* we are certain this item exists because we only have fully parsed items in t *)
-(* we seek an item that was started at position h, ends at the positions marked by tp and wich var is v
+(* we seek an item that was started at position h, ends at the positions marked by tp and wich var is v and that isn't the current item
     if there are more than one item that matches theses conditions, 
     we don't care the one chosen because we only want one possible derivation tree that leads to recognising the word
 *)
-let get_item_var tp start v = match (List.find_opt (fun it -> match it with 
-                                                        | Parsing.Item(s, (_,[]), k, _) when (s = v && k = start) -> true 
-                                                        | _ -> false) tp) with 
-                                | Some(it) -> it 
-                                | None -> failwith "there should alway's be at least one item, because we are recreating a tree that could have been used to recognise the partern"
+let get_item_var to_exclude tp start v = 
+    List.find 
+        (fun it -> match it with 
+            | Parsing.Item(s, (_,[]), k, _) when (s=v && k=start) -> true | _ -> false) 
+        (List.filter (fun it -> not (List.mem it to_exclude)) tp)
 
-let rec tree_of_item (t: (Parsing.item list) array) (i:int) (it:Parsing.item) : derivation_tree * (int*int) = match it with 
-                                    | Parsing.Item(s, (tl, []), k, il) ->
-                                        let (l,_,_) = List.fold_left 
-                                                (fun accu' symb -> match accu', symb with 
-                                                    | (l', pos, h::il'), Var(v) -> let (son, _) = tree_of_item t pos (get_item_var t.(pos) h v) in ( son :: l', h, il') 
-                                                    | (l', pos, il'), Item(i') -> (Leaf(i') :: l', pos-1, il') 
-                                                    | _ -> failwith "there should always be as much indexes in the list of the item as variables in the production used"
-                                                )
-                                                ([], i, il) tl (* the accumulator contains the sons of the current Node, 
-                                                                the position at wich we must search to get the Node corresponding to the next non terminal
-                                                                and the starting postitions of recognitions of the remmaining non terminals to proces*) 
-                                        in
-                                        (Node(s, l), (k,i))
-                                    | _ -> failwith "shouldn't happen, we only use the fully parsed items"
+let rec tree_of_item ?(to_exclude = []) (t: (Parsing.item list) array) (i:int) (it:Parsing.item) : derivation_tree * (int*int) = match it with 
+    | Parsing.Item(s, (tl, []), k, il) ->
+        let (l,_,_) = List.fold_left 
+                (fun accu' symb -> match accu', symb with 
+                    | (l', pos, h::il'), Var(v) -> let to_exclude' = if i = pos then it::to_exclude else [] in let (son, _) = tree_of_item ~to_exclude:to_exclude' t pos (get_item_var to_exclude' t.(pos) h v) in ( son :: l', h, il') 
+                    | (l', pos, il'), Item(i') -> (Leaf(i') :: l', pos-1, il') 
+                    | _ -> failwith "there should always be as much indexes in the list of the item as variables in the production used"
+                )
+                ([], i, il) tl (* the accumulator contains the sons of the current Node, 
+                                the position at wich we must search to get the Node corresponding to the next non terminal
+                                and the starting postitions of recognitions of the remmaining non terminals to proces*) 
+        in
+        (Node(s, l), (k,i))
+    | _ -> failwith "shouldn't happen, we only use the fully parsed items"
 
-let get_tree (t: (Parsing.item list) array) (i: int) (axiom:syntagm) : (derivation_tree * (int*int)) option = 
+let get_tree (t: (Parsing.item list) array) (i: int) (axiom:syntagm) : (derivation_tree * (int*int)) option =
     if List.length t.(i) = 0 then None else (* we are sure we will calculate at leat one tree because there is at least one item in l *)
         let l = (List.map (tree_of_item t i) t.(i)) in 
         let stratingTree = Some(Node(axiom, []), (i,i)) in 
@@ -70,8 +70,8 @@ let get_tree (t: (Parsing.item list) array) (i: int) (axiom:syntagm) : (derivati
                                 end
                             | _ -> failwith "accu should alway's be non empty" 
             ) 
-            (stratingTree)
-            (l) in 
+            stratingTree
+            l in 
         if t = stratingTree then None else t
 
 (** t only contains the fully parsed items, i.e. those where the list context is empty on the right *)
@@ -103,8 +103,8 @@ let rec derivations_of_focus (w : token array) (f: Grammar_focus.focus) : ((deri
         | ProductionFocus(p, ctx) -> let Grammar(_, rl) =  Grammar_focus.grammar_of_focus f in 
                                     (* on veut avoir un syntagme différent de tous ceux présents dans la grammaire
                                         un moyen simple d'être certain que notre syntagme n'appartient pas à la grammaire et d'utiliser
-                                        la concaténation de tous les syntagmes présents dans la grammaire *)
-                                    let s = List.fold_left (fun accu r -> match r with | Rules(s',_) -> accu ^ s' ) "" rl in 
+                                        la concaténation de tous les syntagmes présents dans la grammaire avec une chaine non vide pour le cas ou la grammaire ne comporte qu'une règle *)
+                                    let s = List.fold_left (fun accu r -> match r with | Rules(s',_) -> s' ^ accu ) "'" rl in 
                                     let g = Grammar(s, Rules(s, [p])::rl) in 
                                     let p_syntagm = match ctx with | Rules2X(s', _, _) -> s' in 
                                     (* on remet le bon syntagme comme parent, le syntagme qu'on a définit avant 

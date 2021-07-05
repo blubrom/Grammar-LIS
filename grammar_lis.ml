@@ -13,7 +13,6 @@ object
       let ext = Extension.compute_extent focus in
       extent <- Some ext;
       k_extent ext;
-      (*let sem = Semantics.sem_focus focus in*)
       let lfsugg = Suggestions.suggestions focus in
       k_suggestions lfsugg
 

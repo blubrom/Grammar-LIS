@@ -102,7 +102,7 @@ and syn_production_ctx (p:production) (ctx: production_ctx) (s:syn) (data:word_l
             (Rules(s', pl))
             ctx' 
             ([ Quote("| ", (syn_syntagm (Rules1(ctx', pl)) s' data) @ [ Kwd " -> " ;
-             Enum("|", 
+             Enum(" | ", 
                 (Syntax.xml_list_focus
                     (fun (p1, ll_rr1) -> syn_production (Rules2X(s', ll_rr1, ctx')) data p1) 
                     (p, ll_rr) xml_p)
