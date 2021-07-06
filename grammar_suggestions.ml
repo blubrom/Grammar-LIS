@@ -28,31 +28,36 @@ let suggestions (foc : focus) : suggestion Lis.forest list =
         add `Data (ClearWords);
         add `Data (AddWords (new input ("",""), new input(" ")));
         let f = match foc with {grammar_focus} -> grammar_focus in 
-        let Grammar(_, rl) = grammar_of_focus foc in 
-        let sl = List.map (fun r -> match r with Rules(s,_) -> s) rl in
-        begin match f with 
-          | GrammarFocus(_) -> add `Add (InsertRule (new input ""));
-                               add `Modify (ChangeSyntagm((initial_select::sl, new input initial_select)))
+        match f with 
+            | Some gf -> 
+                let Grammar(_, rl) = grammar_of_focus foc in 
+                let sl = List.map (fun r -> match r with Rules(s,_) -> s) rl in
+                begin match gf with 
+                | GrammarFocus(_) -> add `Add (InsertRule (new input ""));
+                                    add `Modify (ChangeSyntagm((initial_select::sl, new input initial_select)))
 
-          | RulesFocus(_) -> add `Add (InsertRule (new input ""));
-                             add `Add (InsertProduction);
-                             add `Modify (ChangeSyntagm((initial_select::sl, new input initial_select)))
+                | RulesFocus(_) -> add `Add (InsertRule (new input ""));
+                                    add `Add (InsertProduction);
+                                    add `Modify (ChangeSyntagm((initial_select::sl, new input initial_select)))
 
-          | ProductionFocus(_) -> add `Add (InsertProduction);
-                                  add `Add (PutInVariable ((initial_select::sl, new input initial_select), new input ""));
-                                  add `Modify (ChangeSyntagm((initial_select::sl, new input initial_select)));
-                                  add `Add (Copy);
-                                  add `Add (InsertSymbolBefore ((initial_select::sl, new input initial_select), new input ""));
-                                  add `Add (InsertSymbolAfter ((initial_select::sl, new input initial_select), new input ""))
+                | ProductionFocus(_) -> add `Add (InsertProduction);
+                                        add `Add (PutInVariable ((initial_select::sl, new input initial_select), new input ""));
+                                        add `Modify (ChangeSyntagm((initial_select::sl, new input initial_select)));
+                                        add `Add (Copy);
+                                        add `Add (InsertSymbolBefore ((initial_select::sl, new input initial_select), new input ""));
+                                        add `Add (InsertSymbolAfter ((initial_select::sl, new input initial_select), new input ""))
 
-          | SymbolFocus(_) -> add `Modify (SetSymbol((initial_select::sl, new input initial_select), new input ""));
-                              add `Add (InsertSymbolBefore ((initial_select::sl, new input initial_select), new input ""));
-                              add `Add (InsertSymbolAfter ((initial_select::sl, new input initial_select), new input ""));
-                              add `Add (PutInVariable ((initial_select::sl, new input initial_select), new input ""))
+                | SymbolFocus(_) -> add `Modify (SetSymbol((initial_select::sl, new input initial_select), new input ""));
+                                    add `Add (InsertSymbolBefore ((initial_select::sl, new input initial_select), new input ""));
+                                    add `Add (InsertSymbolAfter ((initial_select::sl, new input initial_select), new input ""));
+                                    add `Add (PutInVariable ((initial_select::sl, new input initial_select), new input ""));
+                                    add `Add (InsertProduction)
 
-          | SyntagmFocus(_) -> add `Add (InsertRule (new input ""));
-                               add `Add (InsertProduction);
-                               add `Modify (ChangeSyntagm((initial_select::sl, new input initial_select)))
-        end
+                | SyntagmFocus(_) -> add `Add (InsertRule (new input ""));
+                                    add `Add (InsertProduction);
+                                    add `Modify (ChangeSyntagm((initial_select::sl, new input initial_select)))
+                end
+            | None ->  add `Add(InsertRule (new input ""))
+
     in
     [!forest_modify; !forest_add; !forest_data]

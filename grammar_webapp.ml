@@ -109,6 +109,7 @@ let handle_document_keydown ev place k =
   else false
   
 let error_message : exn -> string = function 
+  | Grammar_focus.No_grammar -> "No defined grammar"
   | Failure msg -> msg
   | exn -> "Unexpected error: " ^ Printexc.to_string exn
 

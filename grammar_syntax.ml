@@ -24,14 +24,14 @@ let rec syn_list ~limit (f : 'a -> syn) (l : 'a list) : syn list =
 		      
 let syn_syntagm (ctx:syntagm_ctx) (s:syntagm) (data:word_list) : syn = 
     if s = " " then 
-        [Focus({grammar_focus=SyntagmFocus(s,ctx);data}, [Word(`Var "&blank;")])]
+        [Focus({grammar_focus=Some(SyntagmFocus(s,ctx));data}, [Word(`Var "&blank;")])]
     else
-        [Focus({grammar_focus=SyntagmFocus(s,ctx);data}, [Word(`Var s)])]
+        [Focus({grammar_focus=Some(SyntagmFocus(s,ctx));data}, [Word(`Var s)])]
 
 let syn_token (t:token) : syn =  if t = " " then [Word(`Token "&blank;")] else [Word(`Token t)]
 let syn_symbol (ctx : symbol_ctx) (data:word_list) : symbol -> syn = function 
-    | Item(t) -> [Focus({grammar_focus=SymbolFocus(Item(t), ctx);data}, syn_token t)] 
-    | Var(v) -> [Focus({grammar_focus=SymbolFocus(Var(v), ctx);data}, [Word(`Var v)])]
+    | Item(t) -> [Focus({grammar_focus=Some(SymbolFocus(Item(t), ctx));data}, syn_token t)] 
+    | Var(v) -> [Focus({grammar_focus=Some(SymbolFocus(Var(v), ctx));data}, [Word(`Var v)])]
 
 let syn_production (ctx : production_ctx) (data:word_list) : production -> syn = function 
     | Production(sl) -> 
@@ -43,11 +43,11 @@ let syn_production (ctx : production_ctx) (data:word_list) : production -> syn =
                   (fun (s, ll_rr) -> syn_symbol (ProductionX(ll_rr, ctx)) data s) 
                   (Focus.focus_list_of_list sl))]
                             
-        in [Focus( {grammar_focus=ProductionFocus(Production(sl), ctx);data}, s')]
+        in [Focus( {grammar_focus=Some(ProductionFocus(Production(sl), ctx));data}, s')]
 
 let syn_rules (ctx : rules_ctx) (data:word_list) : rules -> syn = function 
     | Rules(s, pl) -> [Focus(
-        {grammar_focus=RulesFocus(Rules(s, pl), ctx);data}, 
+        {grammar_focus=Some(RulesFocus(Rules(s, pl), ctx));data}, 
         [Quote("| ", (syn_syntagm (Rules1(ctx, pl)) s data) @ [
             Kwd " -> " ; 
             Enum(" | ", List.map 
@@ -57,10 +57,10 @@ let syn_rules (ctx : rules_ctx) (data:word_list) : rules -> syn = function
     
 let syn_grammar (ctx : grammar_ctx) (data:word_list) : grammar -> syn = function 
     | Grammar(s, rl) -> [Focus(
-        {grammar_focus=GrammarFocus(Grammar(s,rl), ctx);data},
-        (syn_syntagm (Grammar1(ctx, rl)) s data) @ [Indent([Block(
+        {grammar_focus=Some(GrammarFocus(Grammar(s,rl), ctx));data},
+        Kwd "axiom : " :: (syn_syntagm (Grammar1(ctx, rl)) s data) @ [Block(
             List.map (fun (r, ll_rr) -> syn_rules (Grammar2X(s, ll_rr, ctx)) data r) (Focus.focus_list_of_list rl) 
-        )])] 
+        )]
     )]
      
 			   
@@ -68,34 +68,37 @@ let syn_grammar (ctx : grammar_ctx) (data:word_list) : grammar -> syn = function
 let rec syn_focus (foc : focus) : syn =
   match foc with | {grammar_focus;data} -> 
   begin match grammar_focus with 
-    | GrammarFocus(g, ctx) -> syn_grammar_ctx g ctx [Highlight (syn_grammar ctx data g); ControlCurrentFocus] data
-    | RulesFocus(r, ctx) -> syn_rules_ctx r ctx [Highlight (syn_rules ctx data r); ControlCurrentFocus] data
-    | ProductionFocus(p, ctx) -> syn_production_ctx p ctx [Highlight (syn_production ctx data p); ControlCurrentFocus] data
-    | SyntagmFocus(s, ctx) -> syn_syntagm_ctx s ctx [Highlight (syn_syntagm ctx s data); ControlCurrentFocus] data
-    | SymbolFocus(s, ctx) -> syn_symbol_ctx s ctx [Highlight (syn_symbol ctx data s); ControlCurrentFocus] data
+    | Some(gf) -> begin match gf with 
+        | GrammarFocus(g, ctx) -> syn_grammar_ctx g ctx [Highlight (syn_grammar ctx data g); ControlCurrentFocus] data
+        | RulesFocus(r, ctx) -> syn_rules_ctx r ctx [Highlight (syn_rules ctx data r); ControlCurrentFocus] data
+        | ProductionFocus(p, ctx) -> syn_production_ctx p ctx [Highlight (syn_production ctx data p); ControlCurrentFocus] data
+        | SyntagmFocus(s, ctx) -> syn_syntagm_ctx s ctx [Highlight (syn_syntagm ctx s data); ControlCurrentFocus] data
+        | SymbolFocus(s, ctx) -> syn_symbol_ctx s ctx [Highlight (syn_symbol ctx data s); ControlCurrentFocus] data
+    end
+    | None -> [Kwd "No Grammar yet"]
   end
 
 and syn_grammar_ctx (g:grammar) (ctx:grammar_ctx) (s:syn) (data:word_list) : syn = 
-    let  xml_g = [Focus ({grammar_focus=GrammarFocus(g,ctx);data}, s)] in match ctx with    
+    let  xml_g = [Focus ({grammar_focus=Some(GrammarFocus(g,ctx));data}, s)] in match ctx with    
         | Root -> xml_g 
 
 and syn_rules_ctx (r:rules) (ctx:rules_ctx) (s:syn) (data:word_list) : syn = 
-    let  xml_r = [Focus ({grammar_focus=RulesFocus(r,ctx);data}, s)] in match ctx with 
+    let  xml_r = [Focus ({grammar_focus=Some(RulesFocus(r,ctx));data}, s)] in match ctx with 
     | Grammar2X(s', (ll_rr), ctx') -> 
         let rl = Focus.list_of_ctx r ll_rr in
         syn_grammar_ctx 
             (Grammar(s', rl)) 
             ctx' 
-            ((syn_syntagm (Grammar1(ctx', rl)) s' data)  @ [Indent([Block(
+            ((Kwd "axiom : " :: (syn_syntagm (Grammar1(ctx', rl)) s' data)) @ [Block(
                     (Syntax.xml_list_focus
                         (fun (r1, ll_rr1) -> syn_rules (Grammar2X(s', ll_rr1, ctx')) data r1)
                         (r, ll_rr) 
                         xml_r)
-                    )])])
+                    )])
             data
 
 and syn_production_ctx (p:production) (ctx: production_ctx) (s:syn) (data:word_list) : syn = 
-    let xml_p = [Focus ({grammar_focus=ProductionFocus(p, ctx); data}, s)] in match ctx with 
+    let xml_p = [Focus ({grammar_focus=Some(ProductionFocus(p, ctx)); data}, s)] in match ctx with 
     | Rules2X(s', ll_rr, ctx') -> 
         let pl = Focus.list_of_ctx p ll_rr in 
         syn_rules_ctx 
@@ -110,7 +113,7 @@ and syn_production_ctx (p:production) (ctx: production_ctx) (s:syn) (data:word_l
             data
 
 and syn_syntagm_ctx (v:syntagm) (ctx: syntagm_ctx) (s: syn) (data:word_list) : syn = 
-    let xml_s = [Focus({grammar_focus=SyntagmFocus(v, ctx);data}, s)] in match ctx with 
+    let xml_s = [Focus({grammar_focus=Some(SyntagmFocus(v, ctx));data}, s)] in match ctx with 
     | Rules1(ctx', p) -> let pl = Focus.focus_list_of_list p in 
                         syn_rules_ctx 
                             (Rules(v,p)) 
@@ -121,11 +124,11 @@ and syn_syntagm_ctx (v:syntagm) (ctx: syntagm_ctx) (s: syn) (data:word_list) : s
                             syn_grammar_ctx 
                                 (Grammar(v,r)) 
                                 ctx' 
-                                (xml_s @ [ Indent([Block((List.map (fun (r', ll_rr) -> syn_rules (Grammar2X(v, ll_rr,ctx')) data r') rl))])])
+                                (Kwd "axiom : " ::  xml_s @ [Block((List.map (fun (r', ll_rr) -> syn_rules (Grammar2X(v, ll_rr,ctx')) data r') rl))])
                                 data
 
 and syn_symbol_ctx (i:symbol) (ctx: symbol_ctx) (s:syn) (data:word_list) : syn = 
-    let xml_s = [Focus ({grammar_focus=SymbolFocus(i,ctx);data}, s)] in match ctx with
+    let xml_s = [Focus ({grammar_focus=Some(SymbolFocus(i,ctx));data}, s)] in match ctx with
     | ProductionX((ll_rr), ctx') -> 
         let sl = Focus.list_of_ctx i ll_rr in 
         syn_production_ctx 
