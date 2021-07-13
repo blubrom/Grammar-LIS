@@ -9,6 +9,8 @@ type input = [ `FileString of (string * string) Focus.input
               | `Separator of string Focus.input
               | `Word of string Focus.input
               | `SelectSyntagm of syntagm list * (syntagm Focus.input)
+              | `SelectSymbol of string list * (string Focus.input)
+              | `SelectToken of token list * (token Focus.input)
               | `Symbol of string Focus.input 
               | `Syntagm of syntagm Focus.input ]
 
@@ -23,7 +25,9 @@ let rec syn_list ~limit (f : 'a -> syn) (l : 'a list) : syn list =
      else f x :: syn_list ~limit:(limit-1) f r
 		      
 let syn_syntagm (ctx:syntagm_ctx) (s:syntagm) (data:word_list) : syn = 
-    if s = " " then 
+    if s = "" then 
+        [Focus({grammar_focus=Some(SyntagmFocus(s,ctx));data}, [Word(`Var "&#9744;")])]
+    else if s = " " then 
         [Focus({grammar_focus=Some(SyntagmFocus(s,ctx));data}, [Word(`Var "&blank;")])]
     else
         [Focus({grammar_focus=Some(SyntagmFocus(s,ctx));data}, [Word(`Var s)])]
@@ -180,6 +184,10 @@ let syn_extent_word ext_w : syn = match ext_w with
             [] w)
         in [Enum("", l)]
 
+let syn_extent ext data = match ext with 
+    | [] -> Extent(List.map (fun w -> Word(Array.to_list (Array.map (fun s -> Token(s)) w))) data)
+    | _ -> Extent(List.map2 (fun w c -> Grammar_extent.compute_extent_word w c) data ext)
+
 let syn_transf : transf -> syn = function
     | FocusUp -> [Kwd "(focus up)"]
     | FocusRight -> [Kwd "(focus right)"]
@@ -191,12 +199,13 @@ let syn_transf : transf -> syn = function
     | ClearWords -> [Kwd "Clear"; Kwd "words"]
     | InsertRule i -> [Kwd "insert"; Kwd "a"; Kwd "new"; Kwd "non"; Kwd "terminal"; Input(`Syntagm i)]
     | ChangeSyntagm i -> [Kwd "change"; Kwd "syntagm"; Kwd " : "; Input(`SelectSyntagm i)]
-    | InsertProduction -> [Kwd "insert"; Kwd "a"; Kwd "production"]
-    | InsertSymbolBefore (iselect, isymbol) -> [Kwd "insert"; Input(`SelectSyntagm iselect) ; Kwd "or"; Input(`Symbol isymbol); Kwd "before"; Kwd "focus"]
-    | InsertSymbolAfter (iselect, isymbol) -> [Kwd "insert"; Input(`SelectSyntagm iselect) ; Kwd "or"; Input(`Symbol isymbol); Kwd "after"; Kwd "focus"]
+    | InsertProduction i -> [Kwd "insert"; Kwd "a"; Kwd "production"; Kwd "starting"; Kwd "with"; Input(`SelectSymbol i)]
+    | InsertSymbolBefore i -> [Kwd "insert"; Input(`SelectSymbol i); Kwd "before"; Kwd "focus"]
+    | InsertSymbolAfter i -> [Kwd "insert"; Input(`SelectSymbol i) ; Kwd "after"; Kwd "focus"]
     | PutInVariable (iselect, isyn) -> [Kwd "move"; Kwd "current"; Kwd "focus"; Kwd "to"; Input(`SelectSyntagm iselect); Kwd "or"; Input(`Syntagm isyn)]
     | Copy -> [Kwd "copy"; Kwd "current"; Kwd "focus"]
-    | SetSymbol (iselect, isymbol) -> [Kwd "change"; Kwd "current"; Kwd"focus"; Kwd "to"; Input(`SelectSyntagm iselect); Kwd "or"; Input(`Syntagm isymbol)]
+    | SetSymbol iselect -> [Kwd "change"; Kwd "current"; Kwd"focus"; Kwd "to"; Input(`SelectSyntagm iselect)]
+    | NameAxiom i -> [Kwd "name"; Kwd "the"; Kwd "axiom"; Input(`Syntagm i)]
 
 
 

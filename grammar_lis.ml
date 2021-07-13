@@ -5,15 +5,14 @@ module Suggestions = Grammar_suggestions
 		       
 class place (lis : lis) (focus : Focus.focus) =
 object
-  inherit [lis,Focus.focus,Extension.extent,Suggestions.suggestion] Lis.place lis focus
+  inherit [lis,Focus.focus,(Parsing.item list array * Grammar.syntagm) list option,Suggestions.suggestion] Lis.place lis focus
 
-  val mutable extent : Extension.extent option = None
+  (*val mutable extent : ((Parsing.item array * syntagm) list) option = None*)
 								    
   method eval k_extent k_suggestions = 
       let ext = Extension.compute_extent focus in
-      extent <- Some ext;
       k_extent ext;
-      let lfsugg = Suggestions.suggestions focus in
+      let lfsugg = Suggestions.suggestions ext focus in
       k_suggestions lfsugg
 
   method activate sugg = 

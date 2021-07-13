@@ -16,6 +16,8 @@ let html_info_of_input (input : Grammar_syntax.input) : Html.input_info =
   | `Separator input -> Html.string_info (fun contents k -> input#set contents; k ())
   | `Word input -> Html.string_info (fun contents k -> input#set contents; k ())
   | `SelectSyntagm (syntagms, input) -> Html.selectElt_info syntagms (fun x k -> input#set x; k ()) 
+  | `SelectSymbol (symbols, input) -> Html.selectElt_info symbols (fun x k -> input#set x; k ()) 
+  | `SelectToken (tokens, input) -> Html.selectElt_info tokens (fun x k -> input#set x; k ()) 
   | `Symbol input -> Html.string_info (fun contents k -> input#set contents; k ())
   | `Syntagm input -> Html.string_info (fun contents k -> input#set contents; k ())
 
@@ -26,11 +28,14 @@ class results
   ~(id : Html.id) (* where to insert the widget in the DOM *)
   =
 object
-  method set_contents (ext:Grammar_extent.extent) : unit = match ext with 
-    |Extent(e) ->
-        let strl = List.map (fun ext_w -> let xml = Grammar_syntax.syn_extent_word ext_w in Html.syntax ~html_of_word xml) e
-        in let html =  Html.ul (List.map (fun s -> (None, None, None, s)) strl) in 
-        Jsutils.jquery_set_innerHTML (Html.selector_id id) html
+  method set_contents ext (foc:Grammar_focus.focus) : unit = 
+    let syn e = 
+      let strl = List.map (fun ext_w -> let xml = Grammar_syntax.syn_extent_word ext_w in Html.syntax ~html_of_word xml) e
+      in let html =  Html.ul (List.map (fun s -> (None, None, None, s)) strl) in 
+      Jsutils.jquery_set_innerHTML (Html.selector_id id) html in 
+        match ext, foc with 
+    | Some(l), {data} -> let Extent(e) = Grammar_syntax.syn_extent l data in syn e
+    | None, {data} -> let Extent(e) = Grammar_syntax.syn_extent [] data in syn e
   end
 
 let w_result =  new results 
@@ -72,7 +77,7 @@ let render_place place k =
   Jsutils.firebug "place#eval";
   place#eval
     (fun ext -> Jsutils.firebug "ext computed"; 
-                w_result#set_contents ext)
+                w_result#set_contents ext place#focus)
     (fun suggestions -> 
       Jsutils.firebug "suggestions computed";
       w_suggestions#set_suggestions suggestions_cols suggestions;
