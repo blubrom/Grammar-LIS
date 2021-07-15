@@ -9,7 +9,7 @@ let exists_fully_parsed l s = List.exists (fun it -> match it with | Parsing.Ite
 
 let get_tokens_after ext data = 
     List.fold_left2 
-        (fun accu (tab,s) w -> 
+        (fun accu (tab,s,_) w -> 
             let l = ref [] in begin 
             Array.iteri 
                 (fun i il -> if exists_fully_parsed il s then begin try l := ("token "^w.(i)) :: !l with | Invalid_argument _ -> () end) tab 
@@ -18,7 +18,7 @@ let get_tokens_after ext data =
 
 let get_tokens_before ext data = 
     List.fold_left2 
-        (fun accu (tab,s) w -> 
+        (fun accu (tab,s,_) w -> 
             let l = ref [] in begin 
             Array.iteri 
                 (fun i il -> 
@@ -36,7 +36,7 @@ let get_syntagms_after ext foc =
     let g, phrases = match foc with {data} -> grammar_of_focus foc, data in
     let parsing_syntagms = List.map (fun w -> Parsing.earley (init_earley_everey_rules g) g w) phrases in
     List.fold_left2 
-    (fun accu (tab,s) tab' -> 
+    (fun accu (tab,s,_) tab' -> 
         let len = Array.length tab in 
         let l = ref [] in begin 
         Array.iteri 
@@ -53,7 +53,7 @@ let get_syntagms_before ext foc =
     let g, phrases = match foc with {data} -> grammar_of_focus foc, data in
     let parsing_syntagms = List.map (fun w -> Parsing.earley (init_earley_everey_rules g) g w) phrases in
     List.fold_left2 
-    (fun accu (tab,s) tab' -> 
+    (fun accu (tab,s,_) tab' -> 
         let l = ref [] in begin 
         Array.iteri 
             (fun i il -> 
@@ -74,7 +74,7 @@ let rec filter_uniq l = match l with
     | [] -> []
     | h :: tl -> if List.mem h tl then filter_uniq tl else h::(filter_uniq tl)
  
-let suggestions (ext : (((Parsing.item list) array * syntagm) list) option) (foc : focus) : suggestion Lis.forest list =
+let suggestions (ext : (((Parsing.item list) array * syntagm * syntagm) list) option) (foc : focus) : suggestion Lis.forest list =
     let forest_modify = ref [] in
     let forest_add = ref [] in
     let forest_data = ref [] in

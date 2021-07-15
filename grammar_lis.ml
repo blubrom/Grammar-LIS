@@ -5,7 +5,7 @@ module Suggestions = Grammar_suggestions
 		       
 class place (lis : lis) (focus : Focus.focus) =
 object
-  inherit [lis,Focus.focus,(Parsing.item list array * Grammar.syntagm) list option,Suggestions.suggestion] Lis.place lis focus
+  inherit [lis,Focus.focus,(Parsing.item list array * Grammar.syntagm * Grammar.syntagm) list option,Suggestions.suggestion] Lis.place lis focus
 
   (*val mutable extent : ((Parsing.item array * syntagm) list) option = None*)
 								    

@@ -317,7 +317,9 @@ and put_in_variable foc syn syn' = match foc with
               | true -> syn', ctx' 
               | false -> syn', Grammar2X(axiom, (ll',Rules(syn', [])::rr'), ctx'') (* le syntagme n'existait pas donc on l'ajoute *)
         else raise No_selection in  
-        change_syntagm (ProductionFocus(p,(Rules2X(s', (Production([Var(s)])::ll, rr), nctx')))) s
+        let ll' = List.filter (fun p -> p <> Production([Var s])) ll in 
+        let rr' = List.filter (fun p -> p <> Production([Var s])) rr in 
+        change_syntagm (ProductionFocus(p,(Rules2X(s', (Production([Var(s)])::ll', rr'), nctx')))) s
       with | No_selection -> Jsutils.firebug "no selection made"; Some foc end
     | SymbolFocus(s, ctx) -> 
       begin try 

@@ -88,18 +88,18 @@ let get_derivations (t : (Parsing.item list) array) (axiom: syntagm) : (derivati
 
 let get_derivations_of_earley t axiom : ((derivation_tree * (int*int)) list) = let t'= Parsing.get_fully_parsed t in get_derivations t' axiom
 
-let rec extent_of_focus (w : token array) (f: Grammar_focus.focus) : ((Parsing.item list) array * syntagm) = match f with 
+let rec extent_of_focus (w : token array) (f: Grammar_focus.focus) : ((Parsing.item list) array * syntagm * syntagm ) = match f with 
     | {grammar_focus} -> begin match grammar_focus with 
         | Some(gf) -> begin match gf with 
             | GrammarFocus(g, ctx) -> let g' = Grammar_focus.grammar_of_focus f in
                                     let s = match g' with | Grammar(s,_) -> s in 
-                                    ((Parsing.earley (Parsing.init_earley g') g' w), s)
+                                    ((Parsing.earley (Parsing.init_earley g') g' w), s, s)
         
             | RulesFocus(r,ctx) -> let Grammar(_,rl) = Grammar_focus.grammar_of_focus f in 
                                 let s = match r with 
                                     | Rules(s,_) -> s
                                     in let g = Grammar(s,rl) in 
-                                    ((Parsing.earley (Parsing.init_earley g) g w), s)(* lancer earley en ayant mis comme axiome le syntagme de r *)
+                                    ((Parsing.earley (Parsing.init_earley g) g w), s, s)(* lancer earley en ayant mis comme axiome le syntagme de r *)
             
             | ProductionFocus(p, Rules2X(s', _, _)) -> let Grammar(_, rl) =  Grammar_focus.grammar_of_focus f in 
                                         (* on veut avoir un syntagme différent de tous ceux présents dans la grammaire
@@ -109,12 +109,8 @@ let rec extent_of_focus (w : token array) (f: Grammar_focus.focus) : ((Parsing.i
                                         let g = Grammar(s, Rules(s, [p])::rl) in 
                                         (* on remet le bon syntagme comme parent, le syntagme qu'on a définit avant 
                                         était temporaire et servait à éviter les probèmes liés à des règles réccursives à gauche*)
-                                        let tab = Array.map 
-                                            (fun l -> List.map 
-                                                (fun it -> match it with | Parsing.Item(s'',ctx,k,il) when s'' = s -> Parsing.Item(s', ctx,k,il) | _ -> it) 
-                                                l) 
-                                            (Parsing.earley (Parsing.init_earley g) g w) in 
-                                        (tab, s')(* lancer earley avec une initialisation modifiée qui ne met que la règle s->p dans le tableau*)
+                                        let tab = (Parsing.earley (Parsing.init_earley g) g w) in 
+                                        (tab, s, s')(* lancer earley avec une initialisation modifiée qui ne met que la règle s->p dans le tableau*)
         
             | SyntagmFocus(s, ctx) -> begin match Grammar_focus.focus_up f with  (* se rammener au cas grammar ou rules *)
                                         | Some (f,_) -> extent_of_focus w f
@@ -130,19 +126,19 @@ let rec extent_of_focus (w : token array) (f: Grammar_focus.focus) : ((Parsing.i
     end
 
 
-let compute_extent_word w (tab, s) : extent_word = 
+let compute_extent_word w (tab, s, s') : extent_word = 
     let res = ref [] in 
     let l = ref (get_derivations_of_earley tab s) in 
     let n = Array.length w in 
     let i = ref 0 in 
     while !i < n do 
         match !l with 
-            | (t, (k,j)) :: tl when k = !i -> l := tl; i := j; res := (Tree(t))::!res
+            | (Node(_, sons), (k,j)) :: tl when k = !i -> l := tl; i := j; res := (Tree(Node(s', sons)))::!res
             | _ -> res := (Token(w.(!i)))::!res; incr i  
     done;
     Word(List.rev (!res))
 
-let compute_extent (f:Grammar_focus.focus) : (((Parsing.item list) array * syntagm) list) option  = match f with {grammar_focus;data} -> 
+let compute_extent (f:Grammar_focus.focus) : (((Parsing.item list) array * syntagm * syntagm) list) option  = match f with {grammar_focus;data} -> 
     begin match grammar_focus with 
         | Some _ -> Some(List.map (fun w -> extent_of_focus w f) data)
         | None -> None 
