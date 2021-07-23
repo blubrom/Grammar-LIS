@@ -206,6 +206,8 @@ let syn_transf : transf -> syn = function
     | Copy -> [Kwd "copy"; Kwd "current"; Kwd "focus"]
     | SetSymbol iselect -> [Kwd "change"; Kwd "current"; Kwd"focus"; Kwd "to"; Input(`SelectSyntagm iselect)]
     | NameAxiom i -> [Kwd "name"; Kwd "the"; Kwd "axiom"; Input(`Syntagm i)]
+    | ExpandAfter i -> [Kwd "expand"; Kwd "current" ; Kwd "focus"; Kwd "with" ; Input(`SelectSymbol i) ; Kwd "afer"]
+    | ExpandBefore i -> [Kwd "expand"; Kwd "current" ; Kwd "focus"; Kwd "with" ; Input(`SelectSymbol i) ; Kwd "before"]
 
 
 

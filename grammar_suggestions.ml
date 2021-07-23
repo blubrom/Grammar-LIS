@@ -126,8 +126,8 @@ let suggestions (ext : (((Parsing.item list) array * syntagm * syntagm) list) op
                     | ProductionFocus(_) -> 
                         add `Add (InsertProduction(prod_starters, new input initial_select));
                         add `Add (PutInVariable ((initial_select::sl, new input initial_select), new input ""));
-                        (* add `Add ExtendAfter*)
-                        (* add `Add ExtendBefore*)
+                        add `Add (ExpandBefore(sym_before, new input initial_select));
+                        add `Add (ExpandAfter(sym_after, new input initial_select));
                         add `Add (InsertSymbolBefore (sym_before, new input initial_select));
                         add `Add (InsertSymbolAfter (sym_after, new input initial_select)) 
                         (*
@@ -136,13 +136,15 @@ let suggestions (ext : (((Parsing.item list) array * syntagm * syntagm) list) op
                         *)
 
                     | SymbolFocus(_, ctx) -> 
-                        (* add `Add ExtendAfter*)
-                        (* add `Add ExtendBefore*)
                         add `Add (InsertProduction(prod_starters, new input initial_select));
+                        add `Add (PutInVariable((initial_select::sl, new input initial_select), new input ""));
+                        add `Add (ExpandBefore(sym_before, new input initial_select));
+                        add `Add (ExpandAfter(sym_after, new input initial_select));
                         begin match ctx with 
-                            | ProductionX((_,[]),_) -> add `Add (InsertSymbolAfter (sym_after, new input initial_select));
-                                                        add `Add (PutInVariable((initial_select::sl, new input initial_select), new input ""))
-                            | ProductionX(([],_),_) -> add `Add (InsertSymbolBefore (sym_before, new input initial_select))
+                            | ProductionX((h::tl,[]),_) -> add `Add (InsertSymbolAfter (sym_after, new input initial_select))    
+                            | ProductionX(([],h::tl),_) -> add `Add (InsertSymbolBefore (sym_before, new input initial_select))
+                            | ProductionX(([],[]),_) -> add `Add (InsertSymbolAfter (sym_after, new input initial_select));
+                                                        add `Add (InsertSymbolBefore (sym_before, new input initial_select))
                             | _ -> ()
                         end
                         (*

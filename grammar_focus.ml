@@ -215,6 +215,8 @@ type transf =
   | Copy 
   | SetSymbol of (syntagm list *(syntagm input)) 
   | NameAxiom of syntagm input
+  | ExpandBefore of (string list * (string input))
+  | ExpandAfter of (string list * (string input))
 
 (*
 class symbol_frequency_table = 
@@ -484,6 +486,26 @@ and apply_transf (transf : transf) (foc : focus) : focus option =
           | _ -> assert false 
         end 
         in Some({grammar_focus=newgf; data})
+      
+      | ExpandAfter(sl, in_select), Some(gf) ->
+        let sym = in_select#get in 
+        begin match gf with 
+          | ProductionFocus(Production(sl), Rules2X(s, (ll,rr), ctx')) -> 
+            symbol_transf (fun sym' -> Some(SymbolFocus(sym', ProductionX((List.rev sl, []), Rules2X(s, ((Production(sl))::ll, rr), ctx'))))) sym data grammar_focus
+          | SymbolFocus(s, ProductionX((ll,rr), Rules2X(s', (ll',rr'),ctx'))) ->
+            symbol_transf (fun sym' -> Some(SymbolFocus(sym', ProductionX((s::ll, rr), Rules2X(s', (Production(Focus.list_of_ctx s (ll,rr))::ll', rr'), ctx'))))) sym data grammar_focus
+          | _ -> assert false   
+        end 
+
+      | ExpandBefore(sl, in_select), Some(gf) ->
+        let sym = in_select#get in 
+        begin match gf with 
+          | ProductionFocus(Production(sl), Rules2X(s, (ll,rr), ctx')) -> 
+            symbol_transf (fun sym' -> Some(SymbolFocus(sym', ProductionX(([], sl), Rules2X(s, ((Production(sl))::ll, rr), ctx'))))) sym data grammar_focus
+          | SymbolFocus(s, ProductionX((ll,rr), Rules2X(s', (ll',rr'),ctx'))) ->
+            symbol_transf (fun sym' -> Some(SymbolFocus(sym', ProductionX((ll, s::rr), Rules2X(s', (Production(Focus.list_of_ctx s (ll,rr))::ll', rr'), ctx'))))) sym data grammar_focus
+          | _ -> assert false   
+        end       
 
       | SetSymbol (sl,in_select), Some(gf) ->
           let sym = in_select#get in  
