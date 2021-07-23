@@ -31,10 +31,8 @@ let get_tokens_before ext data =
 let init_earley_everey_rules g i = match g with 
     | Grammar(_, rl) -> List.fold_left (fun accu r -> match r with | Rules(s,_) when s <> "" -> (Parsing.items_of_rule i r) @ accu | _ -> accu) [] rl
 
-let get_syntagms_after ext foc = 
+let get_syntagms_after ext foc parsing_syntagms = 
     (* could fail if the grammar_focus is empty. However, this function should only be called when the grammar_focus is non empty*)
-    let g, phrases = match foc with {data} -> grammar_of_focus foc, data in
-    let parsing_syntagms = List.map (fun w -> Parsing.earley (init_earley_everey_rules g) g w) phrases in
     List.fold_left2 
     (fun accu (tab,s,_) tab' -> 
         let len = Array.length tab in 
@@ -48,10 +46,8 @@ let get_syntagms_after ext foc =
         ; !l @ accu end) 
     [] ext parsing_syntagms
 
-let get_syntagms_before ext foc = 
+let get_syntagms_before ext foc parsing_syntagms = 
     (* could fail if the grammar_focus is empty. However, this function should only be called when the grammar_focus is non empty*)
-    let g, phrases = match foc with {data} -> grammar_of_focus foc, data in
-    let parsing_syntagms = List.map (fun w -> Parsing.earley (init_earley_everey_rules g) g w) phrases in
     List.fold_left2 
     (fun accu (tab,s,_) tab' -> 
         let l = ref [] in begin 
@@ -101,12 +97,14 @@ let suggestions (ext : (((Parsing.item list) array * syntagm * syntagm) list) op
         let tokens = initial_select :: (filter_uniq (get_tokens data)) in
         match f with 
             | Some gf -> 
-                let Grammar(_, rl) = grammar_of_focus foc in 
+                let g = grammar_of_focus foc in 
+                let rl = match g with Grammar(_, rl) -> rl in 
                 let sl = List.filter (fun s -> s<>"") (List.map (fun r -> match r with Rules(s,_) -> s) rl) in
                 let ext' = match ext with | Some(x) -> x | _ -> assert false in 
                 (* à modifier pour trier par ordre décroissant de fréquence d'apparition dans la liste *)
-                let sym_before = initial_select :: (filter_uniq (get_syntagms_before ext' foc)) @ (filter_uniq (get_tokens_before ext' data)) in
-                let sym_after = initial_select :: (filter_uniq (get_syntagms_after ext' foc)) @ (filter_uniq (get_tokens_after ext' data)) in 
+                let parsing_syntagms = List.map (fun w -> Parsing.earley (init_earley_everey_rules g) g w) data in
+                let sym_before = initial_select :: (filter_uniq (get_syntagms_before ext' foc parsing_syntagms)) @ (filter_uniq (get_tokens_before ext' data)) in
+                let sym_after = initial_select :: (filter_uniq (get_syntagms_after ext' foc parsing_syntagms)) @ (filter_uniq (get_tokens_after ext' data)) in 
                 let prod_starters = tokens @ (List.map (fun s -> "syntagm "^s) sl) in 
                 begin match gf with 
                     | GrammarFocus(Grammar(axiom, _),_) -> 
@@ -138,6 +136,7 @@ let suggestions (ext : (((Parsing.item list) array * syntagm * syntagm) list) op
                     | SymbolFocus(_, ctx) -> 
                         add `Add (InsertProduction(prod_starters, new input initial_select));
                         add `Add (PutInVariable((initial_select::sl, new input initial_select), new input ""));
+                        add `Add (PutSuffixInVariable((initial_select::sl, new input initial_select), new input ""));
                         add `Add (ExpandBefore(sym_before, new input initial_select));
                         add `Add (ExpandAfter(sym_after, new input initial_select));
                         begin match ctx with 

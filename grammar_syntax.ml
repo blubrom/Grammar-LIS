@@ -208,6 +208,7 @@ let syn_transf : transf -> syn = function
     | NameAxiom i -> [Kwd "name"; Kwd "the"; Kwd "axiom"; Input(`Syntagm i)]
     | ExpandAfter i -> [Kwd "expand"; Kwd "current" ; Kwd "focus"; Kwd "with" ; Input(`SelectSymbol i) ; Kwd "afer"]
     | ExpandBefore i -> [Kwd "expand"; Kwd "current" ; Kwd "focus"; Kwd "with" ; Input(`SelectSymbol i) ; Kwd "before"]
+    | PutSuffixInVariable (iselect, isyn) -> [Kwd "move"; Kwd "the"; Kwd "subproduction"; Kwd "strating"; Kwd "with"; Kwd "the" ; Kwd "current" ; Kwd "focus" ;Kwd "to"; Input(`SelectSyntagm iselect); Kwd "or"; Input(`Syntagm isyn)]
 
 
 

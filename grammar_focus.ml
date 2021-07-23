@@ -217,6 +217,7 @@ type transf =
   | NameAxiom of syntagm input
   | ExpandBefore of (string list * (string input))
   | ExpandAfter of (string list * (string input))
+  | PutSuffixInVariable of (syntagm list *(syntagm input)) * (syntagm input )
 
 (*
 class symbol_frequency_table = 
@@ -505,7 +506,41 @@ and apply_transf (transf : transf) (foc : focus) : focus option =
           | SymbolFocus(s, ProductionX((ll,rr), Rules2X(s', (ll',rr'),ctx'))) ->
             symbol_transf (fun sym' -> Some(SymbolFocus(sym', ProductionX((ll, s::rr), Rules2X(s', (Production(Focus.list_of_ctx s (ll,rr))::ll', rr'), ctx'))))) sym data grammar_focus
           | _ -> assert false   
-        end       
+        end     
+
+      | PutSuffixInVariable((_, in_select), in_syn), Some(gf) ->
+        let syn = in_select#get in 
+        let syn' = in_syn#get in 
+        let newgf =  match gf with 
+          | SymbolFocus(s, ctx) -> 
+            begin try 
+              let syn'', nctx = 
+              if syn <> initial_select then 
+                syn, ctx
+              else if syn' <> "" then 
+                match ctx with | ProductionX((ll,rr), ctx') -> 
+                  begin match ctx' with 
+                    | Rules2X(s', ll_rr', ctx'') when s' <> syn' -> 
+                      begin match ctx'' with 
+                        | Grammar2X(axiom, (ll'',rr''), ctx''') -> 
+                          match List.exists (fun r -> match r with | Rules(s'',_) when s'' = syn' -> true | _  -> false) (Focus.list_of_ctx_none (ll'',rr'')) with 
+                          | true -> syn', ctx 
+                          | false -> syn', ProductionX((ll,rr), Rules2X(s', ll_rr', Grammar2X(axiom, (ll'',Rules(syn', [])::rr''), ctx'''))) (* le syntagme n'existait pas donc on l'ajoute *)
+                      end
+                    | _ -> syn', ctx 
+                  end
+              else 
+                raise No_selection
+              in 
+              match nctx with | ProductionX((ll,rr), ctx') -> 
+                begin match ctx' with 
+                  | Rules2X(s', (ll',rr'), ctx'') -> 
+                    let new_foc = change_syntagm (ProductionFocus(Production(s::rr), Rules2X(s', (Production(List.rev_append ll [Var(syn'')])::ll', rr'), ctx''))) syn''
+                    in match focus_down {grammar_focus = new_foc; data = []} with | Some({grammar_focus}) -> grammar_focus | _ -> assert false
+                end
+            with | No_selection -> Jsutils.firebug "no selection made"; Some gf end
+          | _ -> assert false 
+        in Some({grammar_focus=newgf; data})
 
       | SetSymbol (sl,in_select), Some(gf) ->
           let sym = in_select#get in  
